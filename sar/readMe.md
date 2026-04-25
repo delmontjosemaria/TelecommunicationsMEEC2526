@@ -1,0 +1,1 @@
+Pasta responsável por conter os projetos de Serviços de Aplicações em Redes 2025/26.

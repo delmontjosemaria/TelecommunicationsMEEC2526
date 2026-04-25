@@ -1,0 +1,1 @@
+Pasta responsável por conter os projetos de Redes Móveis 2025/26.
