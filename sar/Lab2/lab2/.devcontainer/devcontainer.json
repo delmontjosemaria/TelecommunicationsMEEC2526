@@ -1,0 +1,54 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/javascript-node-mongo
+{
+	"name": "SAR Project 2026 - Node.js & MongoDB",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "app",
+	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+
+	// Configure tool-specific properties.
+	"customizations": {
+		// Configure properties specific to VS Code.
+		"vscode": {
+			"settings": {
+				"editor.formatOnSave": true,
+				"editor.codeActionsOnSave": {
+					"source.organizeImports": "explicit"
+				}
+			},
+			// Add the IDs of extensions you want installed when the container is created.
+			"extensions": [
+				"mongodb.mongodb-vscode",
+				"angular.ng-template",
+				"bradlc.vscode-tailwindcss",
+				"esbenp.prettier-vscode",
+				"formulahendry.auto-rename-tag",
+				"christian-kohler.path-intellisense"
+			]
+		}
+	},
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	"forwardPorts": [3000, 3043, 27017],
+
+	// Use 'postCreateCommand' to run commands after the container is created.
+	"postCreateCommand": "sudo chown -R node:node . ./Backend 2>/dev/null || true; npm install && npm --prefix Backend install && npm run build",
+
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	"features": {
+		"ghcr.io/devcontainers-extra/features/angular-cli:2": {},
+		"ghcr.io/devcontainers/features/git:1": {}
+	},
+
+	// Environment variables for development
+	"containerEnv": {
+		"NODE_ENV": "development",
+		"MONGODB_URI": "mongodb://db:27017/sar_auction_dev"
+	},
+
+	// Run services needed for a good dev experience
+	"initializeCommand": "echo 'Initializing SAR Project DevContainer for 2026...'",
+
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "root"
+}
