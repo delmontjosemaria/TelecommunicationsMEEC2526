@@ -1,0 +1,44 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ../..:/workspaces:cached
+
+    # Overrides default command so things don't shut down after the process ends.
+    command: sleep infinity
+
+    # Runs app on the same network as the database container, allows "forwardPorts" in devcontainer.json function.
+    network_mode: service:db
+
+    # Environment variables for development
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://db:27017/sar_auction_dev
+      - JWT_SECRET=dev_secret_key_change_in_production
+      - PORT=3000
+      - HTTPS_PORT=3043
+
+    # Use "forwardPorts" in **devcontainer.json** to forward an app port locally.
+    # (Adding the "ports" property to this file will not forward from a Codespace.)
+
+  db:
+    image: mongo:8.0
+    restart: unless-stopped
+    volumes:
+      - mongodb-data:/data/db
+      # Optional: Add initialization scripts
+      # - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+
+    environment:
+      MONGO_INITDB_DATABASE: sar_auction_dev
+      # Uncomment for production or if you need authentication
+      # MONGO_INITDB_ROOT_USERNAME: admin
+      # MONGO_INITDB_ROOT_PASSWORD: secure_password_2026
+
+    # Add "forwardPorts": ["27017"] to **devcontainer.json** to forward MongoDB locally.
+    # (Adding the "ports" property to this file will not forward from a Codespace.)
+
+volumes:
+  mongodb-data:
