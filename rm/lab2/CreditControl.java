@@ -83,21 +83,21 @@ public void setDate_off(Date d){
 }
 
 // update credit when the user does the register
-    public void update_register(){
-      if (!this.is_registered){
-        Date now = new Date();
-        // difference in miliseconds
-        long diff = now.getTime() - date_off.getTime();
-        long timeLeft = (long)Math.ceil(diff/60000);//arredonda por cima, x.y minutos na verdade sao x+1 minutos.
-        float finalPrice = 0;
-        int i = 1;
-        while(timeLeft > 0){
-            finalPrice+=Math.min(60, timeLeft)*i;
-            timeLeft-=60;
-            i++;
-        }
-        this.subCredit(finalPrice);
-        this.is_registered = true;
+public void update_register(){
+  if (!this.is_registered){
+    Date now = new Date();
+    // difference in miliseconds
+    long diff = now.getTime() - date_off.getTime();
+    long timeLeft = (long)Math.ceil(diff/60000);//arredonda por cima, x.y minutos na verdade sao x+1 minutos.
+    float finalPrice = 0;
+    int i = 1;
+    while(timeLeft > 0){
+        finalPrice+=Math.min(60, timeLeft)*i;
+        timeLeft-=60;
+        i++;
+    }
+    this.subCredit(finalPrice);
+    this.is_registered = true;
   }
 }
 
