@@ -4,5 +4,6 @@ export class Chat {
       public sender: string,
       public message: string,
       public receiver: string,
+      public date: Date
 	){}
 }

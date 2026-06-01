@@ -103,14 +103,104 @@ ngOnInit(): void {
                       );
 
   //subscribe to the new user logged in event that must be sent from the server when a client logs in 
+
+  this.socketservice.getEvent("user:logged-in")
+    .subscribe((data: any) => {
+      console.log("New logged-in user:", data.username);
+      
+      // Adicionar ao array de users para mostrar no mapa
+      const newUser: User = {username: data.username, latitude: data.latitude, longitude: data.longitude};
+      
+      // Adicionar se não existir já
+      if (!this.users.find(u => u.username === data.username)) {
+        this.users.push(newUser);
+        
+        // Adicionar marcador no Google Maps
+        this.markers.push({position: {lat: data.latitude, lng: data.longitude }, label: data.username});
+      }
+      
+      this.message = `${data.username} just joined the auction!`;
+    });
   //subscribe to the user logged out event that must be sent from the server when a client logs out 
+
+  this.socketservice.getEvent("user:logged-out")
+    .subscribe((data: any) => {
+      console.log("Usuário saiu:", data.username);
+      
+      // Remover do array de users
+      this.users = this.users.filter(u => u.username !== data.username);
+      
+      // Remover marcador do mapa
+      this.markers = this.markers.filter(m => m.label !== data.username);
+      
+      this.message = `${data.username} left the auction.`;
+    });
+
   //subscribe to a receive:message event to receive message events sent by the server 
-  //subscribe to the item sold event sent by the server for each item that ends.
+  this.socketservice.getEvent("receive:message")
+  .subscribe((data: any) => {
+    console.log(`Mensagem recebida de ${data.from}: ${data.message}`);
+    
+    // Adicionar ao array de chats para mostrar na UI
+    this.chats.push({sender: data.from, receiver: data.to, message: data.message, date: new Date(data.timestamp)});
+    
+    // Opcional: Mostrar notificação
+    if (data.from !== this.userName) {
+      this.message = `New message from ${data.from}: ${data.message}`;
+      
+      // Notificação visual (snackbar)
+      this.notificationService.showInfo(`Message from ${data.from}: ${data.message}`);
+    }
+  });
     
   //subscription to any other events must be performed here inside the ngOnInit function
 
-  }
+    // Subscribe to bid updates
+  const bidSubscription = this.socketservice.getEvent("bid:updated")
+    .subscribe((data: any) => {
+      let updatedItem = data as Item;
+      // Update the item in the items array
+      const index = this.items.findIndex(item => item.id === updatedItem.id);
+      if (index !== -1) {
+        this.items[index] = updatedItem;
+        // If this is the selected item, update it
+        if (this.selectedItem && this.selectedItem.id === updatedItem.id) {
+          this.selectedItem = updatedItem;
+        }
+      }
+    });
 
+  // Subscribe to new items being created
+  const newItemSubscription = this.socketservice.getEvent("item:created")
+    .subscribe((data: any) => {
+      let newItem = data as Item;
+      this.items.push(newItem);
+      console.log("New item added:", newItem);
+    });
+
+  //subscribe to the item sold event sent by the server for each item that ends.
+  const itemSoldSubscription = this.socketservice.getEvent("item:sold")
+    .subscribe((data: any) => {
+      let soldItem = data as Item;
+      const index = this.items.findIndex(item => item.id === soldItem.id);
+      if (index !== -1) {
+        this.items[index] = soldItem;
+        this.soldHistory.push(`${soldItem.title} sold to ${soldItem.wininguser} for ${soldItem.currentbid}`);
+      }
+      // Show notification
+      this.message = `Item ${soldItem.title} has been sold to ${soldItem.wininguser}!`;
+    });
+
+  // Subscribe to outbid notifications (Bónus 2)
+  const outbidSubscription = this.socketservice.getEvent("user:outbid")
+    .subscribe((data: any) => {
+      if (data.username === this.userName) {
+        this.errorMessage = `You have been outbid on item ${data.itemTitle}! Current bid: ${data.currentBid}`;
+        // You could also show a snackbar notification here
+      }
+    });
+
+  }
    logout(){
     //call the logout function in the signInService to clear the token in the browser
     this.signinservice.logout();  // Tem que estar em primeiro para ser apagado o token e nao permitir mais reconnects pelo socket
@@ -169,7 +259,7 @@ ngOnInit(): void {
 //function called when the remove item button is pressed.
   removeItem() {
   //use an HTTP call to the API to remove an item using the auction service.
-    this.router.navigate(['/removeItem']);
+    this.router.navigate(['/removeitem']);
   }
 
   /**
