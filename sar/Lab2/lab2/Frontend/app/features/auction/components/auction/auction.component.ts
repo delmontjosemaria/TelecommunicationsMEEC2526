@@ -169,6 +169,7 @@ ngOnInit(): void {
 //function called when the remove item button is pressed.
   removeItem() {
   //use an HTTP call to the API to remove an item using the auction service.
+    this.router.navigate(['/removeItem']);
   }
 
   /**
