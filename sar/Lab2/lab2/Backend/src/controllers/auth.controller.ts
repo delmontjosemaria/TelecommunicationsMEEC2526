@@ -11,7 +11,7 @@ export const authenticate = (req: Request, res: Response): void => {
   console.log('Authenticate -> Received Authentication POST');
   
   // Generate JWT token youshould use a real user authentication here check in the database
-  User.findOne({ username: req.body.username })
+  User.findOne({username: req.body.username})
   // For now, we are just signing the request body
   const token = jwt.sign(req.body, config.jwtSecret);
   
