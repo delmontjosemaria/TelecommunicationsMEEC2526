@@ -70,6 +70,7 @@ export const removeItem = async (req: Request, res: Response) => {
     res.status(200).json({message: 'Item removed successfully', item: updatedItem});
   }
   catch(error){
+    console.error('Error removing item:', error);
     res.status(500).json({error: 'Internal error while removing item'});
   }
 };

@@ -85,7 +85,8 @@ export const registerUser = async (req: Request, res: Response) => {
     res.status(201).json({success: true, username: newUser.username, token: token, message: 'User registered successfully!'});
   }
   catch(error){
-    res.status(500).json({error: 'Internal server error while registering  user'});
+    console.error('Registration error:', error);
+    res.status(500).json({error: 'Internal server error while registering user'});
   }
 };
 
@@ -100,6 +101,7 @@ export const getUsers = async (req: Request, res: Response) => {
     res.status(200).json({success: true, count: users.length, data: users});
   }
   catch(error){
+    console.error('Error fetching users:', error);
     res.status(500).json({error: "Internal server error while getting users."});
   }
 };
