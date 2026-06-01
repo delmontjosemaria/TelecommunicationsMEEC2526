@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { FormGroup, FormBuilder, Validators } from '@angular/forms';
 
 // Import services from the barrel file
-import { AuctionService, SocketService, SigninService } from '../../../../core/services';
+import { AuctionService, SocketService, SigninService, NotificationService } from '../../../../core/services';
 
 // Import models from the barrel file 
 import { Item, User, Chat, Marker } from '../../../../core/models';
@@ -37,7 +37,7 @@ export class AuctionComponent implements OnInit {
   counter: number;
 
   constructor( private formBuilder: FormBuilder, private router: Router, private socketservice: SocketService, private auctionservice: AuctionService,
-   private signinservice: SigninService) {
+   private signinservice: SigninService, private notificationService: NotificationService) {
     this.items = [];
     this.users = [];
     this.soldHistory = [];
@@ -234,13 +234,60 @@ ngOnInit(): void {
 
   // function called when the submit bid button is pressed
    submit(){
-  	console.log("submitted bid = ", this.bidForm.value.bid);
-  	//send an event using the websocket for this use the socketservice
-    // example :  this.socketservice.sendEvent('eventname',eventdata);
+    const bidAmount = this.bidForm.value.bid;
+    console.log("submitted bid = ", bidAmount);
+
+    if (!bidAmount || bidAmount <= 0) {
+      this.errorMessage = "Please enter a valid bid amount";
+      return;
+    }
+
+    if (!this.selectedItem) {
+      this.errorMessage = "No item selected";
+      return;
+    }
+
+    // Place bid via HTTP
+    this.auctionservice.placeBid(this.selectedItem.id, bidAmount, this.userName)
+      .subscribe({
+        next: (response) => {
+          this.notificationService.showSuccess("Bid placed successfully!");
+          this.bidForm.reset();
+          this.errorMessage = "";
+          this.message = `Your bid of ${bidAmount} on "${this.selectedItem.title}" was placed!`;
+        },
+        error: (error) => {
+          const errMsg = error?.message || "Failed to place bid";
+          this.errorMessage = errMsg;
+          this.notificationService.showError(errMsg);
+        }
+      });
   }
   //function called when the user presses the send message button
   sendMessage(){
     console.log("Message  = ", this.ChatMessage);
+
+    if (!this.ChatMessage || this.ChatMessage.trim() === '') {
+      this.message = 'Please enter a message';
+      return;
+    }
+
+    if (!this.destination) {
+      this.message = 'Please select a destination user';
+      return;
+    }
+
+    // Send message via socket
+    this.socketservice.sendEvent('send:message', {
+      from: this.userName,
+      to: this.destination,
+      message: this.ChatMessage,
+      timestamp: new Date()
+    });
+
+    // Clear message and show confirmation
+    this.ChatMessage = '';
+    this.message = `Message sent to ${this.destination}`;
   }
 
   //function called when the cancel bid button is pressed.

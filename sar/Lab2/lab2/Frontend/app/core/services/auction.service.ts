@@ -53,6 +53,18 @@ export class AuctionService {
       );
   }
 
+  // Place a bid on an item
+  placeBid(itemId: number, bidAmount: number, username: string) {
+    let headers = new HttpHeaders({ 'Authorization': 'Bearer ' + this.signinService.token.token });
+    const options = { headers: headers };
+    const bidData = { bidAmount: bidAmount, username: username };
+
+    return this.http.post<any>(`/api/placebid/${itemId}`, bidData, options)
+      .pipe(
+        catchError(this.handleError)
+      );
+  }
+
      /**
    * Handle Http operation that failed.
    */

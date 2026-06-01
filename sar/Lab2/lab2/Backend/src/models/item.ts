@@ -11,15 +11,14 @@ export interface IItem extends Document {
   wininguser: string;
   sold: boolean;
   owner: string;
-  id: number;
   isActive: boolean;
   lastBidDate: Date;
 }
 
 // Item schema definition
 const ItemSchema = new Schema({
-  title: String,
-  description: String,
+  title: {type: String, required: true},
+  description: {type: String, required: true},
   currentbid: Number,
   reservePrice: Number,
   remainingtime: Number,
@@ -27,10 +26,9 @@ const ItemSchema = new Schema({
   wininguser: String,
   sold: {type: Boolean, default: false},
   owner: String,
-  id: Number,
   isActive: {type: Boolean, default: true},
-  lastBidDate: Date
-});
+  lastBidDate: Date,
+},{timestamps:true});
 
 // Add index for better query performance
 ItemSchema.index({ sold: 1, remainingtime: 1 });

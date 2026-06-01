@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Item from '../models/item';
+import socketService from '../services/socket.service';
 
 
 /**
@@ -7,19 +8,35 @@ import Item from '../models/item';
  */
 export const createItem = async (req: Request, res: Response) => {
   console.log("NewItem -> received form submission new item");
-  //console.log(req.body);
 
   try{
-    const {title, description, reservePrice, remainingtime, buynow, wininguser, sold, owner, id, isActive} = req.body;
-    if (!title || reservePrice === undefined || remainingtime === undefined || buynow === undefined || sold === undefined || owner === undefined || id === undefined) {
+    const {title, description, reservePrice, remainingtime, buynow, owner, isActive} = req.body;
+    if (!title || reservePrice === undefined || remainingtime === undefined || buynow === undefined || owner === undefined) {
       res.status(400).json({error: 'Missing required fields'});
       return;
     }
 
-    const newItem = new Item({title: title, description: description || '', currentbid: reservePrice, reservePrice: reservePrice, remainingtime: remainingtime, buynow: buynow, wininguser: wininguser || '', sold: false, owner: owner, id: id, isActive: isActive, lastBidDate: ''});
+    const newItem = new Item({
+      title: title,
+      description: description || '',
+      currentbid: reservePrice,
+      reservePrice: reservePrice,
+      remainingtime: remainingtime,
+      buynow: buynow,
+      wininguser: '',
+      sold: false,
+      owner: owner,
+      isActive: isActive,
+      lastBidDate: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
 
     const savedItem = await newItem.save();
-    
+
+    // Broadcast new item to all clients
+    socketService.newItemBroadcast(savedItem);
+
     res.status(201).json(savedItem);
   }
   catch(error){
@@ -33,7 +50,6 @@ export const createItem = async (req: Request, res: Response) => {
  */
 export const removeItem = async (req: Request, res: Response) => {
   console.log("RemoveItem -> received form submission remove item");
-  //console.log(req.body);
 
   try{
     const {id} = req.body;
@@ -43,7 +59,8 @@ export const removeItem = async (req: Request, res: Response) => {
       return;
     }
 
-    const updatedItem = await Item.findOneAndUpdate({id: id}, {isActive: false}, {new: true});
+    // Update item to mark as inactive
+    const updatedItem = await Item.findOneAndUpdate({_id: id}, {isActive: false}, {new: true});
 
     if (!updatedItem){
       res.status(404).json({error: 'Item not found!'});
@@ -55,19 +72,56 @@ export const removeItem = async (req: Request, res: Response) => {
   catch(error){
     res.status(500).json({error: 'Internal error while removing item'});
   }
-  
 };
 
 /**
- * Get all items
+ * Get all items with optional filtering
  */
 export const getItems = async (req: Request, res: Response) => {
   console.log('received get Items');
 
   try{
-    const items = await Item.find({isActive: true}).sorte({id: 1});
+    // Build filter object from query params
+    const filter: any = { isActive: true };
+
+    // Filter by price range
+    if (req.query.minPrice) {
+      filter.currentbid = { $gte: Number(req.query.minPrice) };
+    }
+    if (req.query.maxPrice) {
+      filter.currentbid = filter.currentbid || {};
+      filter.currentbid.$lte = Number(req.query.maxPrice);
+    }
+
+    // Filter by owner
+    if (req.query.owner) {
+      filter.owner = req.query.owner;
+    }
+
+    // Filter by status (active, sold, ended)
+    if (req.query.status) {
+      if (req.query.status === 'sold') {
+        filter.sold = true;
+      } else if (req.query.status === 'ended') {
+        filter.remainingtime = { $lte: 0 };
+      } else if (req.query.status === 'active') {
+        filter.sold = false;
+        filter.remainingtime = { $gt: 0 };
+      }
+    }
+
+    // Text search on title/description
+    if (req.query.search) {
+      const searchTerm = req.query.search as string;
+      filter.$or = [
+        { title: { $regex: searchTerm, $options: 'i' } },
+        { description: { $regex: searchTerm, $options: 'i' } }
+      ];
+    }
+
+    const items = await Item.find(filter).sort({createdAt: -1});
     res.json(items);
-    console.log('responded with ${items.length} items');
+    console.log(`responded with ${items.length} items`);
   }
   catch(error){
     console.error("Error fetching items: ", error);
@@ -77,8 +131,8 @@ export const getItems = async (req: Request, res: Response) => {
 
 /**
  * Get item by ID
- */
-export const getItemById = async (req: Request, res: Response) => {
+ * 
+ * export const getItemById = async (req: Request, res: Response) => {
   try {
     const {id} = req.params;
 
@@ -95,6 +149,8 @@ export const getItemById = async (req: Request, res: Response) => {
     res.status(500).json({error: 'Internal error while fetching item'});
   }
 }; 
+ */
+
 
 /**
  * Update an existing item
@@ -103,18 +159,19 @@ export const updateItem = async (req: Request, res: Response): Promise<void> => 
   try {
     const { id } = req.params;
     const updates = req.body;
-    
+
+    // Update item by MongoDB _id
     const updatedItem = await Item.findOneAndUpdate(
-      { id: parseInt(id), isActive: true },
+      { _id: id, isActive: true },
       updates,
       { new: true, runValidators: true }
     );
-    
+
     if (!updatedItem) {
       res.status(404).json({error: 'Item not found'});
       return;
     }
-    
+
     res.json(updatedItem);
   } catch(error) {
     console.error("Error updating item: ", error);
@@ -129,58 +186,83 @@ export const placeBid = async (req: Request, res: Response): Promise<void> => {
   try {
     const {id} = req.params;
     const {bidAmount, username} = req.body;
-    
+
     if (!bidAmount || !username) {
       res.status(400).json({error: 'Bid amount and username are required'});
       return;
     }
-    
-    const item = await Item.findOne({ id: parseInt(id), isActive: true });
-    
+
+    // Find item by MongoDB _id
+    const item = await Item.findOne({ _id: id, isActive: true });
+
     if (!item) {
       res.status(404).json({error: 'Item not found'});
       return;
     }
-    
+
     if (item.sold) {
       res.status(400).json({error: 'Item already sold'});
       return;
     }
-    
+
     if (item.remainingtime <= 0) {
       res.status(400).json({error: 'Auction has ended'});
       return;
     }
-    
-    //bid deve ser >= reservePrice E > currentbid
+
+    // Check bid >= reserve AND > current bid
     if (bidAmount < item.reservePrice) {
       res.status(400).json({error: `Bid must be at least the reserve price of ${item.reservePrice}`});
       return;
     }
-    
+
     if (bidAmount <= item.currentbid) {
       res.status(400).json({error: `Bid must be higher than current bid of ${item.currentbid}`});
       return;
     }
-    
-    // Verificação de buynow
+
+    // Store previous bidder for outbid notification
+    const previousBidder = item.wininguser;
+
+    // Handle Buy Now
     if (item.buynow && bidAmount >= item.buynow) {
-      // Se o bid atingir ou ultrapassar buynow, o item é vendido imediatamente
       item.sold = true;
       item.currentbid = item.buynow;
       item.wininguser = username;
       item.isActive = false;
       const soldItem = await item.save();
+      socketService.itemSoldBroadcast(soldItem);
       res.json({message: 'Item purchased via Buy Now!', item: soldItem});
       return;
     }
-    
-    // Bid normal
+
+    // Update bid
     item.currentbid = bidAmount;
     item.wininguser = username;
-    
+    item.lastBidDate = new Date();
+
+    // Soft-close extension: if bid in final 5 minutes, extend by 5 minutes
+    const fiveMinutesInMs = 300000;
+    if (item.remainingtime < fiveMinutesInMs) {
+      item.remainingtime = fiveMinutesInMs;
+    }
+
     const updatedItem = await item.save();
-    
+
+    // Broadcast bid update to all clients
+    socketService.bidUpdateBroadcast(updatedItem);
+
+    // Notify previous bidder that they were outbid
+    if (previousBidder && previousBidder !== username) {
+      socketService.outbidNotification(previousBidder, {
+        username: previousBidder,
+        itemId: item._id,
+        itemTitle: item.title,
+        currentBid: bidAmount,
+        newBidder: username
+      });
+    }
+
     res.json({message: 'Bid placed successfully', item: updatedItem});
   } catch(error) {
     console.error("Error placing bid: ", error);

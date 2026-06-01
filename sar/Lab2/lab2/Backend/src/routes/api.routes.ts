@@ -12,13 +12,12 @@ router.get('/users', authenticate, authController.getUsers);
 
 // Item routes
 router.post('/newitem', authenticate, itemController.createItem);
-router.post('/updateitem', authenticate, itemController.updateItem);
+router.post('/updateitem/:id', authenticate, itemController.updateItem);
 router.post('/removeitem', authenticate, itemController.removeItem);
 router.get('/items', authenticate, itemController.getItems);
-router.get('/itemid', authenticate, itemController.getItemById);
 
-// Bid rout
-router.post('/placebid', authenticate, itemController.placeBid);
+// Bid route
+router.post('/placebid/:id', authenticate, itemController.placeBid);
 
 // Handle JWT errors
 router.use(handleJwtError);

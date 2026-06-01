@@ -3,13 +3,14 @@ import * as jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import config from '../config/config';
 import User from '../models/user';
+import socketService from '../services/socket.service';
 
 /**
  * Handle user authentication
  */
 export const authenticate = async (req: Request, res: Response) => {
   console.log('Authenticate -> Received Authentication POST');
-  
+
   try{
     const {username, password, latitude, longitude} = req.body;
 
@@ -30,6 +31,7 @@ export const authenticate = async (req: Request, res: Response) => {
     if (!isPasswordValid){
       console.log('Authentication failed: Invalid password for user ${username}');
       res.status(401).json({error: 'Invalid username or password'});
+      return;
     }
 
     if (user.isActive === false){
@@ -41,15 +43,22 @@ export const authenticate = async (req: Request, res: Response) => {
 
     const token = jwt.sign({userId: user._id, username: user.username, role: user.role}, config.jwtSecret, {expiresIn: '24h'});
 
+    // Broadcast user login to all connected clients
+    socketService.newLoggedUserBroadcast({
+      username: user.username,
+      latitude: latitude || 0,
+      longitude: longitude || 0
+    });
+
     res.json({success: true, username: user.username, token: token, expiresIn: '24h'});
 
     console.log('Authentication successful: ${username} logged in');
-  } 
+  }
   catch (error){
     console.error('Authentication error:', error);
     return res.status(500).json({error:"Internal server error during authentication"});
   }
-  
+
   console.log('Authenticate -> Handled Authentication POST');
 };
 
@@ -61,7 +70,7 @@ export const registerUser = async (req: Request, res: Response) => {
   
   try{
     const {username, password, email} = req.body;
-    const existingUser = await User.findeOne({$or: [{username}, {email}]});
+    const existingUser = await User.findOne({$or: [{username}, {email}]});
 
     if (existingUser){
       res.status(400).json({error: 'Username or email already exists'});
@@ -76,7 +85,7 @@ export const registerUser = async (req: Request, res: Response) => {
     res.status(201).json({success: true, username: newUser.username, token: token, message: 'User registered successfully!'});
   }
   catch(error){
-    res.status(500).json({error: 'Internal server error while registeriing  user'});
+    res.status(500).json({error: 'Internal server error while registering  user'});
   }
 };
 

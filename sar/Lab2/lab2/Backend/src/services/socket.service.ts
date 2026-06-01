@@ -1,6 +1,7 @@
 import * as jwt from 'jsonwebtoken';
 import { Server, Socket } from 'socket.io';
 import config from '../config/config';
+import Item from '../models/item';
 
 class SocketService {
   private io: Server | null = null;
@@ -71,51 +72,116 @@ class SocketService {
       // Handle message event
       socket.on('send:message', (chat) => {
         console.log("send:message received with -> ", chat);
+        // Broadcast message to all connected clients
+        if (this.io && this.socketIDbyUsername.has(chat.to)) {
+          const receiverSocketID = this.socketIDbyUsername.get(chat.to);
+          this.io.to(receiverSocketID!).emit('receive:message', {
+            from: username,
+            to: chat.to,
+            message: chat.message,
+            timestamp: new Date()
+          });
+        }
       });
 
       // Handle disconnection
       socket.on('disconnect', () => {
         console.log("User disconnected");
-        const username = this.usernamebySocketID.get(socket.id);
-        if (username) {
-          this.socketIDbyUsername.delete(username);
+        const disconnectedUsername = this.usernamebySocketID.get(socket.id);
+        if (disconnectedUsername) {
+          // Broadcast logout to all clients
+          this.userLoggedOutBroadcast({ username: disconnectedUsername });
+          this.socketIDbyUsername.delete(disconnectedUsername);
         }
         this.usernamebySocketID.delete(socket.id);
       });
     });
   }
 
-  /**
-   * Start auction timer for item remaining time updates
-   */
+  // Start auction timer for item remaining time updates
   private startAuctionTimer(): void {
-    // Timer function to decrement remaining time 
-    this.intervalId = setInterval(() => {
-      //  update item times here
-      // add actual database operations
+    this.intervalId = setInterval(async () => {
+      try {
+        // Get all active items
+        const items = await Item.find({ isActive: true, sold: false });
+
+        for (const item of items) {
+          // Decrement remaining time by 1000ms (1 second)
+          const newRemainingTime = Math.max(0, item.remainingtime - 1000);
+          item.remainingtime = newRemainingTime;
+
+          // If auction ended, mark as sold
+          if (newRemainingTime <= 0 && !item.sold) {
+            item.sold = true;
+            item.isActive = false;
+            await item.save();
+            // Broadcast item sold event
+            this.itemSoldBroadcast(item);
+          } else {
+            await item.save();
+          }
+        }
+
+        // Broadcast updated items list to all clients
+        const updatedItems = await Item.find({ isActive: true });
+        this.itemsUpdateBroadcast(updatedItems);
+      } catch (error) {
+        console.error('Error in auction timer:', error);
+      }
     }, 1000);
   }
 
-  /**
-   * Broadcast new logged-in user to all clients
-   */
+  // Broadcast new logged-in user to all clients
   public newLoggedUserBroadcast(newUser: any): void {
     if (this.io) {
       for (const socketID of this.socketIDbyUsername.values()) {
-        this.io.to(socketID).emit('new:item', newUser);
+        this.io.to(socketID).emit('user:logged-in', newUser);
       }
     }
   }
 
-  /**
-   * Broadcast user logged-out event to all clients
-   */
+  // Broadcast user logged-out event to all clients
   public userLoggedOutBroadcast(loggedOutUser: any): void {
-    console.log('RemoveItemBroadcast -> ', loggedOutUser);
     if (this.io) {
       for (const socketID of this.socketIDbyUsername.values()) {
-        this.io.to(socketID).emit('remove:item', loggedOutUser);
+        this.io.to(socketID).emit('user:logged-out', loggedOutUser);
       }
+    }
+  }
+
+  // Broadcast bid update to all clients
+  public bidUpdateBroadcast(item: any): void {
+    if (this.io) {
+      this.io.emit('bid:updated', item);
+    }
+  }
+
+  // Broadcast new item creation to all clients
+  public newItemBroadcast(item: any): void {
+    if (this.io) {
+      this.io.emit('item:created', item);
+    }
+  }
+
+  // Broadcast item sold event to all clients
+  public itemSoldBroadcast(item: any): void {
+    if (this.io) {
+      this.io.emit('item:sold', item);
+    }
+  }
+
+  // Broadcast outbid notification to specific user
+  public outbidNotification(username: string, itemData: any): void {
+    if (this.io && this.socketIDbyUsername.has(username)) {
+      const socketID = this.socketIDbyUsername.get(username);
+      this.io.to(socketID!).emit('user:outbid', itemData);
+    }
+  }
+
+  // Broadcast items update to all clients
+  public itemsUpdateBroadcast(items: any[]): void {
+    if (this.io) {
+      this.io.emit('update:items', items);
     }
   }
 
