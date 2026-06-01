@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { FormGroup, FormControl, Validators } from '@angular/forms';
+import { FormGroup, FormControl, AbstractControl, Validators, ValidationErrors } from '@angular/forms';
 
 // Import services and models from barrel files
 import { SigninService, SocketService } from '../../../../core/services';

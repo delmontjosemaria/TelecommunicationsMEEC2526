@@ -1,69 +1,96 @@
 import { Request, Response } from 'express';
 import * as jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 import config from '../config/config';
 import User from '../models/user';
 
 /**
  * Handle user authentication
- * Note: Original dummy functionality
  */
-export const authenticate = (req: Request, res: Response): void => {
+export const authenticate = async (req: Request, res: Response) => {
   console.log('Authenticate -> Received Authentication POST');
   
-  // Generate JWT token youshould use a real user authentication here check in the database
-  User.findOne({username: req.body.username})
-  // For now, we are just signing the request body
-  const token = jwt.sign(req.body, config.jwtSecret);
+  try{
+    const {username, password, latitude, longitude} = req.body;
+
+    if (!username || !password){
+      res.status(400).json({error: 'Username and password are required'});
+      return;
+    }
+
+    const user = await User.findOne({username: username});
+    if (!user){
+      console.log('Authentication failed: user ${username} not found!');
+      res.status(401).json({error: 'Invalid username or password'});
+      return;
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid){
+      console.log('Authentication failed: Invalid password for user ${username}');
+      res.status(401).json({error: 'Invalid username or password'});
+    }
+
+    if (user.isActive === false){
+      res.status(403).json({error: 'Account disabled, please contact support.'});
+      return;
+    }
+
+    await User.updateOne({username: username}, {$set: {lastLoginAt: new Date(), latitude: latitude, longitude: longitude}});
+
+    const token = jwt.sign({userId: user._id, username: user.username, role: user.role}, config.jwtSecret, {expiresIn: '24h'});
+
+    res.json({success: true, username: user.username, token: token, expiresIn: '24h'});
+
+    console.log('Authentication successful: ${username} logged in');
+  } 
+  catch (error){
+    console.error('Authentication error:', error);
+    return res.status(500).json({error:"Internal server error during authentication"});
+  }
   
-  // Send response with token
-  res.json({
-    username: req.body.username,
-    token
-  });
-  
-  console.log('Authenticate -> Received Authentication POST');
+  console.log('Authenticate -> Handled Authentication POST');
 };
 
 /**
  * Handle user registration
- * Note: Original dummy functionality
  */
-export const registerUser = (req: Request, res: Response): void => {
+export const registerUser = async (req: Request, res: Response) => {
   console.log("NewUser -> received form submission new user");
-  console.log(req.body);
   
-  // Send dummy response with user data
-  // In the  implementation, you have to save the user to the database
-  res.json({
-    name: "somename",
-    email: "some@somemail.com",
-    username: "someusername",
-    password: "somepassword",
-    latitude: 19.09,
-    longitude: 34
-  });
+  try{
+    const {username, password, email} = req.body;
+    const existingUser = await User.findeOne({$or: [{username}, {email}]});
+
+    if (existingUser){
+      res.status(400).json({error: 'Username or email already exists'});
+      return;
+    }
+
+    const newUser = new User({username, password, email});
+    await newUser.save();
+
+    const token = jwt.sign({userId: newUser._id, username: newUser.username}, config.jwtSecret, {expiresIn: '24h'});
+
+    res.status(201).json({success: true, username: newUser.username, token: token, message: 'User registered successfully!'});
+  }
+  catch(error){
+    res.status(500).json({error: 'Internal server error while registeriing  user'});
+  }
 };
 
 /**
  * Get all users
- * Note: Maintaining original dummy functionality
  */
-export const getUsers = (req: Request, res: Response): void => {
+export const getUsers = async (req: Request, res: Response) => {
   // Go to the database and get all users
 
-//create dummy users for now
-  const users = [
-    {
-      name: "somename",
-      email: "some@somemail.com",
-      username: "someusername",
-      password: "somepassword",
-      latitude: 19.09,
-      longitude: 34
-    }
-  ];
-
-
-  //  For now it just returns a dummy list of users, you should replace it with actual database query results
-  res.json(users);
+  try{
+    const users = await User.find({}, 'name email username latitude longitude');
+    res.status(200).json({success: true, count: users.length, data: users});
+  }
+  catch(error){
+    res.status(500).json({error: "Internal server error while getting users."});
+  }
 };
