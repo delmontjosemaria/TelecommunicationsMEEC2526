@@ -18,6 +18,12 @@ export const createItem = async (req: Request, res: Response) => {
       return;
     }
 
+    const creator = await User.findOne({username: owner});
+    if (creator && !creator.isActive){
+      res.status(403).json({error: 'User is blocked and cannot create items'});
+      return;
+    }
+
     const newItem = new Item({
       title: title,
       description: description || '',
@@ -194,6 +200,13 @@ export const placeBid = async (req: Request, res: Response): Promise<void> => {
       res.status(400).json({error: 'Bid amount and username are required'});
       return;
     }
+
+    const bidder = await User.findOne({username});
+    if (bidder && !bidder.isActive) {
+      res.status(403).json({error: 'Your account has been blocked'});
+      return;
+    }
+
 
     // Find item by MongoDB _id
     const item = await Item.findOne({ _id: id, isActive: true });

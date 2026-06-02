@@ -91,3 +91,25 @@ export const getAuditLogs = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to fetch audit logs' });
   }
 };
+
+// PATCH /api/admin/users/:id/role  (admin only)
+export const setUserRole = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+    const adminId = (req as any).user.id;
+ 
+    if (!['user', 'moderator', 'admin'].includes(role)) {
+      res.status(400).json({ error: 'Invalid role' });
+      return;
+    }
+ 
+    const user = await User.findByIdAndUpdate(id, { role }, { new: true });
+    if (!user) { res.status(404).json({ error: 'User not found' }); return; }
+ 
+    await log('set_role', adminId, 'user', id, `role set to ${role}`);
+    res.json({ message: 'Role updated', user });
+  } catch {
+    res.status(500).json({ error: 'Failed to update role' });
+  }
+};

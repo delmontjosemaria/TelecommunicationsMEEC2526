@@ -13,6 +13,8 @@ export interface IItem extends Document {
   owner: string;
   isActive: boolean;
   lastBidDate: Date;
+  flaggedAt?: Date;
+  flaggedReason?: string;
 }
 
 // Item schema definition
@@ -28,6 +30,8 @@ const ItemSchema = new Schema({
   owner: String,
   isActive: {type: Boolean, default: true},
   lastBidDate: Date,
+  flaggedAt: Date,
+  flaggedReason: String
 },{timestamps:true});
 
 // Add index for better query performance
