@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import Item from '../models/item';
+import User from '../models/user';
 import socketService from '../services/socket.service';
+import { sendOutbidEmail, sendWinEmail } from '../services/email.service';
 
 
 /**
@@ -228,6 +230,17 @@ export const placeBid = async (req: Request, res: Response): Promise<void> => {
     // Handle Buy Now
     if (item.buynow && bidAmount >= item.buynow) {
       item.sold = true;
+      const winner = await User.findOne({username});
+      //winner notification via email
+      if (winner?.notificationPreferences?.emailOnWin) {
+        await sendWinEmail(winner.email, {
+          username: winner.username,
+          itemTitle: item.title,
+          finalBid: item.currentbid,
+          itemId: String(item._id)
+        });
+      }
+
       item.currentbid = item.buynow;
       item.wininguser = username;
       item.isActive = false;
@@ -262,6 +275,17 @@ export const placeBid = async (req: Request, res: Response): Promise<void> => {
         currentBid: bidAmount,
         newBidder: username
       });
+      // Send outbid email if user has preference enabled
+      const outbidUser = await User.findOne({username: previousBidder});
+      if (outbidUser?.notificationPreferences?.emailOnOutbid) {
+        await sendOutbidEmail(outbidUser.email, {
+          username: outbidUser.username,
+          itemTitle: item.title,
+          currentBid: bidAmount,
+          itemId: String(item._id)
+        });
+      }
+
     }
 
     res.json({message: 'Bid placed successfully', item: updatedItem});

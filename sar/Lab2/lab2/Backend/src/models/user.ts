@@ -13,6 +13,15 @@ export interface IUser extends Document {
   isActive: boolean;
   role: string;
   lastLoginAt?: Date;
+  //Admin moderation
+  blockedAt?:Date;
+  blockedReason?: string;
+  //Email preferences
+  notificationPreferences:{
+    emailOnOutbid: boolean;
+    emailOnWin: boolean;
+    emailOnAuctionEndingSoon: boolean;
+  };
 }
 
 // User schema definition
@@ -26,7 +35,14 @@ const UserSchema = new Schema<IUser>({
   longitude: Number,
   isActive: {type: Boolean, default: true},
   role: {type: String, enum: ['user', 'admin', 'moderator'], default: 'user'},
-  lastLoginAt: Date
+  lastLoginAt: Date,
+  blockedAt: Date,
+  blockedReason: String,
+  notificationPreferences: {
+    emailOnOutbid: {type: Boolean, default: true},
+    emailOnWin: {type: Boolean, default: true},
+    emailOnAuctionEndingSoon: {type: Boolean, default: false}
+  }
 },{timestamps:true});
 
 UserSchema.pre('save', async function(next){

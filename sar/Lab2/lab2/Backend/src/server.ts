@@ -22,6 +22,7 @@ import { connectDatabase } from './config/db';
 import apiRoutes from './routes/api.routes';
 import socketService from './services/socket.service';
 import errorHandler from './middlewares/errorHandler';
+import {generalLimiter} from './middlewares/rateLimit.middleware';
 
 // Initialize express app
 const app = express();
@@ -43,6 +44,8 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 // Parse cookies
 app.use(cookieParser());
+
+app.use('/api', generalLimiter);
 
 // API routes
 app.use('/api', apiRoutes);
