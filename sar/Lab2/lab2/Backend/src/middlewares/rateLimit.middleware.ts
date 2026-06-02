@@ -1,4 +1,5 @@
 import rateLimit from 'express-rate-limit';
+import { Request, Response, NextFunction } from 'express';
 
 const rateLimitResponse = (retryAfter: number) => ({
   error: 'Too many requests',
@@ -11,7 +12,7 @@ export const authLimiter = rateLimit({
   limit: 5,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  handler: (req, res, next, options) => {
+  handler: (req: Request, res: Response, _next: NextFunction, options: any) => {
     res.status(429).json(rateLimitResponse(Math.ceil(options.windowMs / 1000)));
   }
 });
@@ -22,7 +23,7 @@ export const bidLimiter = rateLimit({
   limit: 30,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  handler: (req, res, next, options) => {
+  handler: (req: Request, res: Response, _next: NextFunction, options: any) => {
     res.status(429).json(rateLimitResponse(Math.ceil(options.windowMs / 1000)));
   }
 });
@@ -33,7 +34,7 @@ export const generalLimiter = rateLimit({
   limit: 100,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  handler: (req, res, next, options) => {
+  handler: (req: Request, res: Response, _next: NextFunction, options: any) => {
     res.status(429).json(rateLimitResponse(Math.ceil(options.windowMs / 1000)));
   }
 });
