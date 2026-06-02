@@ -22,4 +22,20 @@ router.post('/placebid/:id', authenticate, itemController.placeBid);
 // Handle JWT errors
 router.use(handleJwtError);
 
+/*
+import adminRoutes from './routes/admin.routes';
+import { authLimiter, bidLimiter } from '../middlewares/rateLimit.middleware';
+ 
+// Dentro do router:
+router.use('/admin', adminRoutes);
+ 
+// Nas rotas de auth (login/register):
+router.post('/auth/login', authLimiter, loginController);
+router.post('/auth/register', authLimiter, registerController);
+ 
+// Nas rotas de bid:
+router.post('/items/:id/bid', bidLimiter, placeBid);
+
+*/
+
 export default router;
