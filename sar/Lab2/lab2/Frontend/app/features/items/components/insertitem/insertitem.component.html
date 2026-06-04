@@ -49,6 +49,14 @@
             <div class="form_container">
               <form [formGroup]="itemForm" (submit)="submit()">
                 <mat-form-field class="form-field" appearance="outline">
+                  <mat-label>Title</mat-label>
+                  <input matInput formControlName="title" id="title" type="text" class="form-control">
+                  <mat-icon matPrefix>title</mat-icon>
+                  <mat-error *ngIf="f['title'].touched && f['title'].invalid">
+                    <span *ngIf="f['title'].errors['required']">This field is mandatory.</span>
+                  </mat-error>
+                </mat-form-field>
+                <mat-form-field class="form-field" appearance="outline">
                   <mat-label>Description</mat-label>
                   <textarea matInput formControlName="description" id="description" class="form-control" rows="3"></textarea>
                   <mat-icon matPrefix>description</mat-icon>
@@ -59,12 +67,12 @@
                 <div class="price-fields-row">
                   <mat-form-field class="form-field" appearance="outline">
                     <mat-label>Starting bid</mat-label>
-                    <input matInput formControlName="currentbid" id="currentbid" type="number" class="form-control">
+                    <input matInput formControlName="reservePrice" id="reservePrice" type="number" class="form-control">
                     <mat-icon matPrefix>price_check</mat-icon>
                     <span matSuffix>$</span>
-                    <mat-error *ngIf="f['currentbid'].touched && f['currentbid'].invalid">
-                      <span *ngIf="f['currentbid'].errors['required']">This field is mandatory.</span>
-                      <span *ngIf="f['currentbid'].errors['pattern']">This must be a positive number.</span>
+                    <mat-error *ngIf="f['reservePrice'].touched && f['reservePrice'].invalid">
+                      <span *ngIf="f['reservePrice'].errors['required']">This field is mandatory.</span>
+                      <span *ngIf="f['reservePrice'].errors['pattern']">This must be a positive number.</span>
                     </mat-error>
                   </mat-form-field>
                   <mat-form-field class="form-field" appearance="outline">
@@ -81,11 +89,11 @@
                 <div class="detail-fields-row">
                   <mat-form-field class="form-field" appearance="outline">
                     <mat-label>Duration (seconds)</mat-label>
-                    <input matInput formControlName="remainingtime" id="remainingtime" type="text" class="form-control">
+                    <input matInput formControlName="initialTime" id="initialTime" type="text" class="form-control">
                     <mat-icon matPrefix>schedule</mat-icon>
-                    <mat-error *ngIf="f['remainingtime'].touched && f['remainingtime'].invalid">
-                      <span *ngIf="f['remainingtime'].errors['required']">This field is mandatory.</span>
-                      <span *ngIf="f['remainingtime'].errors['pattern']">This must be a positive number.</span>
+                    <mat-error *ngIf="f['initialTime'].touched && f['initialTime'].invalid">
+                      <span *ngIf="f['initialTime'].errors['required']">This field is mandatory.</span>
+                      <span *ngIf="f['initialTime'].errors['pattern']">This must be a positive number.</span>
                     </mat-error>
                   </mat-form-field>
                   <mat-form-field class="form-field" appearance="outline">

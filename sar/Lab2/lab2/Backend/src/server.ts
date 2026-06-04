@@ -23,6 +23,7 @@ import apiRoutes from './routes/api.routes';
 import socketService from './services/socket.service';
 import errorHandler from './middlewares/errorHandler';
 import {generalLimiter} from './middlewares/rateLimit.middleware';
+import { startAuctionTimer } from './services/auctionTimer.service';
 
 // Initialize express app
 const app = express();
@@ -131,6 +132,9 @@ const startServer = async () => {
     httpsServer.listen(config.httpsPort, () => {
       console.log(`API running on https://localhost:${config.httpsPort}`);
     });
+
+    //started timer after DB connection is stabilished
+    startAuctionTimer();
     
   } catch (err) {
     console.error('Failed to start server:', err);

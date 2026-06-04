@@ -7,7 +7,7 @@ export interface IUser extends Document {
   email: string;
   username: string;
   password: string;
-  isLogged: boolean;
+  islogged: boolean;
   latitude: number;
   longitude: number;
   isActive: boolean;
@@ -30,7 +30,7 @@ const UserSchema = new Schema<IUser>({
   email: {type: String, required: true, unique: true},
   username: {type: String, required: true, unique: true, trim: true},
   password: {type: String, required: true},
-  isLogged: Boolean,
+  islogged: Boolean,
   latitude: Number,
   longitude: Number,
   isActive: {type: Boolean, default: true},
@@ -43,7 +43,12 @@ const UserSchema = new Schema<IUser>({
     emailOnWin: {type: Boolean, default: true},
     emailOnAuctionEndingSoon: {type: Boolean, default: false}
   }
-},{timestamps:true});
+},{timestamps:true,
+    toJSON: {
+        virtuals: true,      
+        versionKey: false    
+      }
+});
 
 UserSchema.pre('save', async function(next){
   if (!this.isModified('password'))

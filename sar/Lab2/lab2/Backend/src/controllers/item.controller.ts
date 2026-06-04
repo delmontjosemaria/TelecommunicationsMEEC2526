@@ -12,8 +12,8 @@ export const createItem = async (req: Request, res: Response) => {
   console.log("NewItem -> received form submission new item");
 
   try{
-    const {title, description, reservePrice, remainingtime, buynow, owner, isActive} = req.body;
-    if (!title || reservePrice === undefined || remainingtime === undefined || buynow === undefined || owner === undefined) {
+    const {title, description, reservePrice, initialTime, buynow, owner} = req.body;
+    if (!title || reservePrice === undefined || initialTime === undefined || buynow === undefined || owner === undefined) {
       res.status(400).json({error: 'Missing required fields'});
       return;
     }
@@ -29,16 +29,19 @@ export const createItem = async (req: Request, res: Response) => {
       description: description || '',
       currentbid: reservePrice,
       reservePrice: reservePrice,
-      remainingtime: remainingtime,
+      initialTime: initialTime,
+      remainingtime: initialTime,
       buynow: buynow,
       wininguser: '',
       sold: false,
       owner: owner,
-      isActive: isActive,
+      isActive: true,
       lastBidDate: new Date(),
       createdAt: new Date(),
       updatedAt: new Date()
     });
+
+    console.log(newItem);
 
     const savedItem = await newItem.save();
 
@@ -60,7 +63,7 @@ export const removeItem = async (req: Request, res: Response) => {
   console.log("RemoveItem -> received form submission remove item");
 
   try{
-    const {id} = req.body;
+    const {id} = req.params;
 
     if (!id){
       res.status(400).json({error: 'Item ID is required'});
@@ -139,40 +142,21 @@ export const getItems = async (req: Request, res: Response) => {
 };
 
 /**
- * Get item by ID
- * 
- * export const getItemById = async (req: Request, res: Response) => {
-  try {
-    const {id} = req.params;
-
-    const item = await Item.findOne({id: parseInt(id), isActive: true});
-
-    if (!item){
-      res.status(404).json({error: 'Item not found'});
-      return;
-    }
-
-    res.json(item);
-  } 
-  catch(error){
-    res.status(500).json({error: 'Internal error while fetching item'});
-  }
-}; 
- */
-
-
-/**
  * Update an existing item
  */
 export const updateItem = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
-    const updates = req.body;
+    const {id} = req.params;
+
+    const allowed = ['title', 'description', 'buynow'];
+    const safeUpdates = Object.fromEntries(
+      Object.entries(req.body).filter(([k]) => allowed.includes(k))
+    );
 
     // Update item by MongoDB _id
     const updatedItem = await Item.findOneAndUpdate(
       { _id: id, isActive: true },
-      updates,
+      safeUpdates,
       { new: true, runValidators: true }
     );
 
@@ -209,7 +193,7 @@ export const placeBid = async (req: Request, res: Response): Promise<void> => {
 
 
     // Find item by MongoDB _id
-    const item = await Item.findOne({ _id: id, isActive: true });
+    const item = await Item.findOne({_id: id, isActive: true});
 
     if (!item) {
       res.status(404).json({error: 'Item not found'});
@@ -237,12 +221,18 @@ export const placeBid = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    if (item.owner === username) {
+      res.status(403).json({ error: 'You cannot bid on your own item' });
+      return;
+    }
+
     // Store previous bidder for outbid notification
     const previousBidder = item.wininguser;
 
     // Handle Buy Now
     if (item.buynow && bidAmount >= item.buynow) {
       item.sold = true;
+      item.currentbid = item.buynow;
       const winner = await User.findOne({username});
       //winner notification via email
       if (winner?.notificationPreferences?.emailOnWin) {
@@ -278,30 +268,33 @@ export const placeBid = async (req: Request, res: Response): Promise<void> => {
 
     // Broadcast bid update to all clients
     socketService.bidUpdateBroadcast(updatedItem);
-
-    // Notify previous bidder that they were outbid
-    if (previousBidder && previousBidder !== username) {
-      socketService.outbidNotification(previousBidder, {
-        username: previousBidder,
-        itemId: item._id,
-        itemTitle: item.title,
-        currentBid: bidAmount,
-        newBidder: username
-      });
-      // Send outbid email if user has preference enabled
-      const outbidUser = await User.findOne({username: previousBidder});
-      if (outbidUser?.notificationPreferences?.emailOnOutbid) {
-        await sendOutbidEmail(outbidUser.email, {
-          username: outbidUser.username,
-          itemTitle: item.title,
-          currentBid: bidAmount,
-          itemId: String(item._id)
-        });
-      }
-
-    }
-
     res.json({message: 'Bid placed successfully', item: updatedItem});
+
+    setImmediate(async () => {
+      try{
+        // Notify previous bidder that they were outbid
+        if (previousBidder && previousBidder !== username) {
+          socketService.outbidNotification(previousBidder, {
+            username: previousBidder,
+            itemId: item._id,
+            itemTitle: item.title,
+            currentBid: bidAmount,
+            newBidder: username
+          });
+          // Send outbid email if user has preference enabled
+          const outbidUser = await User.findOne({username: previousBidder});
+          if (outbidUser?.notificationPreferences?.emailOnOutbid) {
+            await sendOutbidEmail(outbidUser.email, {
+              username: outbidUser.username,
+              itemTitle: item.title,
+              currentBid: bidAmount,
+              itemId: String(item._id)
+            });
+          }
+        }
+      }catch(err){console.error('Notification error (non-critical): ', err);}
+
+    })
   } catch(error) {
     console.error("Error placing bid: ", error);
     res.status(500).json({error: 'Internal error while placing bid'});

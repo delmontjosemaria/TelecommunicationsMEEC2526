@@ -43,7 +43,7 @@ export class AuctionService {
    }
 
   removeItem (item: any) {
-    console.log("auctiob service removeItem -> Removing an item.");
+    console.log("auction service removeItem -> Removing an item.");
     let headers = new HttpHeaders({ 'Authorization': 'Bearer ' + this.signinService.token.token }); // insert tokern in the requests
     let options = { headers: headers };
 
@@ -54,7 +54,7 @@ export class AuctionService {
   }
 
   // Place a bid on an item
-  placeBid(itemId: number, bidAmount: number, username: string) {
+  placeBid(itemId: string, bidAmount: number, username: string) {
     let headers = new HttpHeaders({ 'Authorization': 'Bearer ' + this.signinService.token.token });
     const options = {headers: headers};
     const bidData = {bidAmount: bidAmount, username: username};

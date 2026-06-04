@@ -16,6 +16,13 @@
   </div>
 </mat-toolbar>
 
+<mat-toolbar color="warn" *ngIf="errorMessage" class="error-bar">
+  <mat-icon>error</mat-icon>
+  <span>{{errorMessage}}</span>
+  <button mat-icon-button (click)="errorMessage=''"><mat-icon>close</mat-icon></button>
+</mat-toolbar>
+<div class="info-message-bar" *ngIf="message">{{message}}</div>
+
 <mat-sidenav-container class="navigation_bar">
   <mat-sidenav #sidenav mode="over" class="sidenav-panel">
     <div class="sidenav-header">
@@ -48,6 +55,11 @@
             </mat-card-header>
             <mat-card-content class="table-container">
               <table mat-table [dataSource]="items" class="items-table">
+                <tr *ngIf="items.length === 0">
+                  <td [attr.colspan]="displayedColumns.length" style="text-align:center;padding:2rem;color:grey">
+                    <mat-icon>inventory_2</mat-icon><br>No items currently available
+                  </td>
+                </tr>          
                 <!-- Description Column -->
                 <ng-container matColumnDef="description">
                   <th mat-header-cell *matHeaderCellDef>Description</th>
@@ -76,7 +88,7 @@
                   <td mat-cell *matCellDef="let item">
                     <mat-progress-bar mode="determinate" [value]="getTimeProgress(item)" 
                       [color]="getTimeProgressColor(item)"></mat-progress-bar>
-                    <span class="time-text">{{item.remainingtime}}</span>
+                    <span class="time-text">{{formatTime(item.remainingtime)}}</span>
                   </td>
                 </ng-container>
 
@@ -140,7 +152,7 @@
               </mat-card-title>
             </mat-card-header>
             <mat-card-content class="map-container">
-              <google-map [width]="350" [height]="250" [options]="mapOptions">
+              <google-map [options]="mapOptions" style="width:100%;height:250px;display:block;">
                 <map-marker *ngFor="let marker of markers" [position]="marker.position" [label]="marker.label">
                 </map-marker>
               </google-map>
@@ -156,7 +168,8 @@
                 <mat-icon>gavel</mat-icon>
                 Place Your Bid
               </mat-card-title>
-              <mat-card-subtitle *ngIf="selectedItem">For: {{selectedItem.description}}</mat-card-subtitle>
+              <mat-card-subtitle *ngIf="selectedItem">For: {{selectedItem.title}}</mat-card-subtitle>
+              <mat-card-subtitle *ngIf="selectedItem">Description: {{selectedItem.description}}</mat-card-subtitle>
             </mat-card-header>
             <mat-card-content>
               <div class="form-container">
@@ -183,7 +196,7 @@
                         <mat-icon>cancel</mat-icon>
                         Cancel
                       </button>
-                      <button mat-raised-button color="accent" type="button" (click)="buyNow()">
+                      <button mat-raised-button color="accent" type="button" (click)="buyNow()" *ngIf="!showRemove">
                         <mat-icon>shopping_cart</mat-icon>
                         Buy Now
                       </button>
@@ -209,6 +222,7 @@
             <mat-card-content class="message-container">
               <div class="scrollable">
                 <mat-list class="chat-list">
+                  <p *ngIf="chats.length === 0" style="color:grey;text-align:center">No messages yet.</p>
                   <mat-list-item *ngFor="let chat of chats" (click)="onMessageSender(chat)" class="chat-item">
                     <mat-icon mat-list-icon>person</mat-icon>
                     <div mat-line class="chat-sender">{{ chat.sender }}</div>

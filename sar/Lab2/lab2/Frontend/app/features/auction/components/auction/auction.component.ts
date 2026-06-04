@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormGroup, FormBuilder, Validators } from '@angular/forms';
+import {Subscription} from 'rxjs';
 
 // Import services from the barrel file
 import { AuctionService, SocketService, SigninService, NotificationService } from '../../../../core/services';
@@ -36,6 +37,8 @@ export class AuctionComponent implements OnInit {
   chats: Chat[]; //array for storing chat messages
   counter: number;
 
+  private subscriptions: Subscription[];
+
   constructor( private formBuilder: FormBuilder, private router: Router, private socketservice: SocketService, private auctionservice: AuctionService,
    private signinservice: SigninService, private notificationService: NotificationService) {
     this.items = [];
@@ -54,6 +57,7 @@ export class AuctionComponent implements OnInit {
     this.centerLat = this.signinservice.latitude != null ? this.signinservice.latitude : 38.640026;
     this.centerLong = this.signinservice.longitude != null ? this.signinservice.longitude : -9.155379;
     this.markers = [];
+    this.subscriptions = [];
     this.showRemove = false;
     this.mapOptions = {
       center: { lat: this.centerLat, lng: this.centerLong },
@@ -86,13 +90,17 @@ ngOnInit(): void {
           let receiveddata = result as User[]; // cast the received data as an array of users (must be sent like that from server)
             console.log("getUsers Auction Component -> received the following users: ", receiveddata);
           // do the rest of the needed processing here
+          this.users = receiveddata;
+          this.markers = receiveddata
+          .filter(u=>u.latitude != null && u.longitude != null)
+          .map(u => ({ position: { lat: u.latitude!, lng: u.longitude! }, label: u.username }));
         },
         error: error => this.errorMessage = <any>error });
 
   //subscribe to the incoming websocket events
 
   //example how to subscribe to the server side regularly (each second) items:update event
-      const updateItemsSubscription = this.socketservice.getEvent("update:items")
+      const updateItemsSubscription = this.subscriptions.push(this.socketservice.getEvent("update:items")
                       .subscribe(
                         data =>{
                           let receiveddata = data as Item[];
@@ -100,16 +108,16 @@ ngOnInit(): void {
                               this.items = receiveddata;
                             }
                         }
-                      );
+                      ));
 
   //subscribe to the new user logged in event that must be sent from the server when a client logs in 
 
-  this.socketservice.getEvent("user:logged-in")
+  this.subscriptions.push(this.socketservice.getEvent("user:logged-in")
     .subscribe((data: any) => {
       console.log("New logged-in user:", data.username);
       
       // Adicionar ao array de users para mostrar no mapa
-      const newUser: User = {username: data.username, latitude: data.latitude, longitude: data.longitude};
+      const newUser: User = {name: '', email: '', password: '', username: data.username, latitude: data.latitude, longitude: data.longitude, islogged: true};
       
       // Adicionar se não existir já
       if (!this.users.find(u => u.username === data.username)) {
@@ -120,10 +128,10 @@ ngOnInit(): void {
       }
       
       this.message = `${data.username} just joined the auction!`;
-    });
+    }));
   //subscribe to the user logged out event that must be sent from the server when a client logs out 
 
-  this.socketservice.getEvent("user:logged-out")
+  this.subscriptions.push(this.socketservice.getEvent("user:logged-out")
     .subscribe((data: any) => {
       console.log("Usuário saiu:", data.username);
       
@@ -134,10 +142,10 @@ ngOnInit(): void {
       this.markers = this.markers.filter(m => m.label !== data.username);
       
       this.message = `${data.username} left the auction.`;
-    });
+    }));
 
   //subscribe to a receive:message event to receive message events sent by the server 
-  this.socketservice.getEvent("receive:message")
+  this.subscriptions.push(this.socketservice.getEvent("receive:message")
   .subscribe((data: any) => {
     console.log(`Mensagem recebida de ${data.from}: ${data.message}`);
     
@@ -151,12 +159,12 @@ ngOnInit(): void {
       // Notificação visual (snackbar)
       this.notificationService.showInfo(`Message from ${data.from}: ${data.message}`);
     }
-  });
+  }));
     
   //subscription to any other events must be performed here inside the ngOnInit function
 
     // Subscribe to bid updates
-  const bidSubscription = this.socketservice.getEvent("bid:updated")
+  const bidSubscription = this.subscriptions.push(this.socketservice.getEvent("bid:updated")
     .subscribe((data: any) => {
       let updatedItem = data as Item;
       // Update the item in the items array
@@ -168,37 +176,40 @@ ngOnInit(): void {
           this.selectedItem = updatedItem;
         }
       }
-    });
+    }));
 
   // Subscribe to new items being created
-  const newItemSubscription = this.socketservice.getEvent("item:created")
+  const newItemSubscription = this.subscriptions.push(this.socketservice.getEvent("item:created")
     .subscribe((data: any) => {
       let newItem = data as Item;
       this.items.push(newItem);
       console.log("New item added:", newItem);
-    });
+    }));
 
   //subscribe to the item sold event sent by the server for each item that ends.
-  const itemSoldSubscription = this.socketservice.getEvent("item:sold")
+  const itemSoldSubscription = this.subscriptions.push(this.socketservice.getEvent("item:sold")
     .subscribe((data: any) => {
       let soldItem = data as Item;
-      const index = this.items.findIndex(item => item.id === soldItem.id);
-      if (index !== -1) {
-        this.items[index] = soldItem;
-        this.soldHistory.push(`${soldItem.title} sold to ${soldItem.wininguser} for ${soldItem.currentbid}`);
+      this.items = this.items.filter(item => item.id !== soldItem.id);
+      this.soldHistory.push(`${soldItem.title} sold to ${soldItem.wininguser} for ${soldItem.currentbid}`);
+      this.message = `Item ${soldItem.title} sold to ${soldItem.wininguser}!`;
+      this.notificationService.showInfo(this.message);
+      // Limpar selectedItem se for o vendido:
+      if (this.selectedItem?.id === soldItem.id) {
+        this.selectedItem = null!;
+        this.showBid = false;
+        this.showRemove = false;
       }
-      // Show notification
-      this.message = `Item ${soldItem.title} has been sold to ${soldItem.wininguser}!`;
-    });
+    }));
 
-  // Subscribe to outbid notifications (Bónus 2)
-  const outbidSubscription = this.socketservice.getEvent("user:outbid")
+  // Subscribe to outbid notifications 
+  const outbidSubscription = this.subscriptions.push(this.socketservice.getEvent("user:outbid")
     .subscribe((data: any) => {
       if (data.username === this.userName) {
         this.errorMessage = `You have been outbid on item ${data.itemTitle}! Current bid: ${data.currentBid}`;
         // You could also show a snackbar notification here
       }
-    });
+    }));
 
   }
    logout(){
@@ -229,7 +240,9 @@ ngOnInit(): void {
 
   //function called when a received message is selected. 
   onMessageSender(ClickedChat: Chat) {
-    //destination is now the sender of the selected received message. 
+    //destination is now the sender of the selected received message.
+    this.destination = ClickedChat.sender; 
+    this.showMessage = true;
   }
 
   // function called when the submit bid button is pressed
@@ -248,6 +261,7 @@ ngOnInit(): void {
     }
 
     // Place bid via HTTP
+    console.log(this.selectedItem);
     this.auctionservice.placeBid(this.selectedItem.id, bidAmount, this.userName)
       .subscribe({
         next: (response) => {
@@ -296,8 +310,11 @@ ngOnInit(): void {
    }
 
    //function called when the buy now button is pressed.
-
    buyNow(){
+    if (this.selectedItem?.owner === this.userName) {
+      this.errorMessage = "You cannot buy your own item.";
+      return;
+  }
    	this.bidForm.setValue({              /// sets the field value to the buy now value of the selected item
    		bid: this.selectedItem.buynow
    	});
@@ -305,8 +322,16 @@ ngOnInit(): void {
    }
 //function called when the remove item button is pressed.
   removeItem() {
-  //use an HTTP call to the API to remove an item using the auction service.
-    this.router.navigate(['/removeitem']);
+    if (!this.selectedItem) return;
+    this.auctionservice.removeItem(this.selectedItem.id).subscribe({
+      next: () => {
+        this.items = this.items.filter(i => i.id !== this.selectedItem.id);
+        this.showBid = false;
+        this.showRemove = false;
+        this.notificationService.showSuccess('Item removed successfully');
+      },
+      error: (err) => this.errorMessage = err?.message || 'Failed to remove item'
+    });
   }
 
   /**
@@ -319,7 +344,7 @@ ngOnInit(): void {
       return 0;
     }
 
-    const maxTime = 3600000; // Assuming initial time is 1 hour (3600000 ms)
+    const maxTime = item.initialTime; 
     const remainingTime = item.remainingtime;
     
     // Calculate elapsed time as a percentage
@@ -327,6 +352,16 @@ ngOnInit(): void {
     
     // Return a percentage value between 0-100
     return Math.min(Math.max(elapsedPercentage, 0), 100);
+  }
+
+  formatTime(ms: number): string {
+    if (!ms || ms <= 0) return '00:00';
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    return h > 0
+      ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+      : `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
   }
 
   /**
@@ -351,6 +386,10 @@ ngOnInit(): void {
     else {
       return 'warn'; // Red
     }
+  }
+
+  ngOnDestroy(){
+    this.subscriptions.forEach(s=>s.unsubscribe());
   }
 
 }

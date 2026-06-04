@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { FormGroup, FormControl, Validators } from '@angular/forms';
 
 // Import services and models from barrel files
-import { InsertitemService, SigninService } from '../../../../core/services';
+import { InsertitemService, SigninService} from '../../../../core/services';
 import { Item } from '../../../../core/models';
 
 @Component({
@@ -26,10 +26,11 @@ export class InsertitemComponent implements OnInit {
 
   ngOnInit(): void {
   	 this.itemForm = new FormGroup({
+      title: new FormControl('', [Validators.required]),
       description: new FormControl ('', [Validators.required]),
-      currentbid: new FormControl ('', [Validators.required, Validators.pattern("^[0-9]*$")]), 
+      reservePrice: new FormControl ('', [Validators.required, Validators.pattern("^[0-9]*$")]), 
       buynow: new FormControl ('', [Validators.required, Validators.pattern("^[0-9]*$")]), 
-      remainingtime: new FormControl ('', [Validators.required, Validators.pattern("^[0-9]*$")]), 
+      initialTime: new FormControl ('', [Validators.required, Validators.pattern("^[0-9]*$")]), 
       owner: new FormControl ('', [Validators.required])
   	 });
      this.itemForm.patchValue({owner: this.userName});
@@ -38,9 +39,7 @@ export class InsertitemComponent implements OnInit {
   }
 
   get f(){
-
     return this.itemForm.controls;
-
   }
 
   submit(){
@@ -64,7 +63,10 @@ export class InsertitemComponent implements OnInit {
   }
 
   logout(){
-    
+    //call the logout function in the signInService to clear the token in the browser
+    this.signinservice.logout();  // Tem que estar em primeiro para ser apagado o token e nao permitir mais reconnects pelo socket
+    //navigate back to the log in page
+    this.router.navigate(['/signin']);
   }
 
 }

@@ -6,6 +6,7 @@ export interface IItem extends Document {
   description: string;
   currentbid: number;
   reservePrice: number;
+  initialNumber: number;
   remainingtime: number;
   buynow: number;
   wininguser: string;
@@ -23,6 +24,7 @@ const ItemSchema = new Schema({
   description: {type: String, required: true},
   currentbid: Number,
   reservePrice: Number,
+  initialTime: Number,
   remainingtime: Number,
   buynow: Number,
   wininguser: String,
@@ -32,7 +34,12 @@ const ItemSchema = new Schema({
   lastBidDate: Date,
   flaggedAt: Date,
   flaggedReason: String
-},{timestamps:true});
+},{timestamps:true,
+    toJSON: {
+      virtuals: true,      
+      versionKey: false    
+    }},
+);
 
 // Add index for better query performance
 ItemSchema.index({ sold: 1, remainingtime: 1 });
