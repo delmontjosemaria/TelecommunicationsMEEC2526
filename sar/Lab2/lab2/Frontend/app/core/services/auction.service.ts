@@ -69,7 +69,7 @@ export class AuctionService {
    * Handle Http operation that failed.
    */
    private handleError (error: HttpErrorResponse) {
-    let errMsg:string;
+    let errMsg:string;  
     if (error.error instanceof ErrorEvent) {
     // A client-side or network error occurred. Handle it accordingly.
       errMsg = error.error.message ? error.error.message : error.toString()

@@ -38,6 +38,7 @@ export class AuctionComponent implements OnInit {
   counter: number;
 
   private subscriptions: Subscription[];
+  private timerInterval: any;
 
   constructor( private formBuilder: FormBuilder, private router: Router, private socketservice: SocketService, private auctionservice: AuctionService,
    private signinservice: SigninService, private notificationService: NotificationService) {
@@ -211,6 +212,36 @@ ngOnInit(): void {
       }
     }));
 
+  const expiredSubscription = this.subscriptions.push(
+    this.socketservice.getEvent("item:expired").subscribe((data: any) => {
+      const expiredItem = data as Item;
+
+      // Remover da lista ativa
+      this.items = this.items.filter(i => i.id !== expiredItem.id);
+
+      // Notificar só o owner
+      if (expiredItem.owner === this.userName) {
+        this.notificationService.showInfo(
+          `Your item "${expiredItem.title}" expired without any bids.`
+        );
+      }
+
+      // Limpar seleção se necessário
+      if (this.selectedItem?.id === expiredItem.id) {
+        this.selectedItem = null!;
+        this.showBid = false;
+        this.showRemove = false;
+      }
+    })
+  );
+
+  this.timerInterval = setInterval(() => {
+    this.items = this.items.map(item => ({
+      ...item,
+      remainingtime: Math.max(0, item.remainingtime - 1000)
+    }));
+  }, 1000);
+
   }
    logout(){
     //call the logout function in the signInService to clear the token in the browser
@@ -341,17 +372,14 @@ ngOnInit(): void {
    */
   getTimeProgress(item: Item): number {
     if (!item || !item.remainingtime) {
-      return 0;
+      return 100;
     }
 
-    const maxTime = item.initialTime; 
-    const remainingTime = item.remainingtime;
-    
     // Calculate elapsed time as a percentage
-    const elapsedPercentage = ((maxTime - remainingTime) / maxTime) * 100;
+    const elapsed = ((item.initialTime - item.remainingtime) / item.initialTime) * 100;
     
     // Return a percentage value between 0-100
-    return Math.min(Math.max(elapsedPercentage, 0), 100);
+    return Math.min(Math.max(elapsed, 0), 100);
   }
 
   formatTime(ms: number): string {
@@ -370,26 +398,34 @@ ngOnInit(): void {
    * @returns Material color for the progress bar
    */
   getTimeProgressColor(item: Item): string {
-    if (!item || !item.remainingtime) {
+    if (!item || !item.remainingtime) 
       return 'warn'; // Red when no time or item data
-    }
 
-    // More than 50% time remaining - show green
-    if (item.remainingtime > 1800000) {
+    const progress = item.remainingtime / item.initialTime;
+
+    if (progress > 0.5) 
       return 'primary'; // Blue
-    } 
-    // Between 25% and 50% time remaining - show accent (amber)
-    else if (item.remainingtime > 900000) {
+
+    else if (progress > 0.25) 
       return 'accent';
-    } 
-    // Less than 25% time remaining - show red
-    else {
+
+    else 
       return 'warn'; // Red
-    }
   }
+
+  getTimeTextColor(item: Item): string {
+  if (!item || !item.remainingtime || !item.initialTime) return '#E24B4A'; // vermelho
+  
+  const percentage = item.remainingtime / item.initialTime;
+
+  if (percentage > 0.5) return '#378ADD'; // azul — mais de 50%
+  if (percentage > 0.25) return '#EF9F27'; // amber — 25-50%
+  return '#E24B4A';                        // vermelho — menos de 25%
+}
 
   ngOnDestroy(){
     this.subscriptions.forEach(s=>s.unsubscribe());
+    clearInterval(this.timerInterval);
   }
 
 }

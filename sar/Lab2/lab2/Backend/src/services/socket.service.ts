@@ -103,27 +103,33 @@ class SocketService {
     this.intervalId = setInterval(async () => {
       try {
         // Get all active items
-        const items = await Item.find({ isActive: true, sold: false });
+        const items = await Item.find({isActive: true, sold: false});
 
         for (const item of items) {
           // Decrement remaining time by 1000ms (1 second)
           const newRemainingTime = Math.max(0, item.remainingtime - 1000);
           item.remainingtime = newRemainingTime;
 
-          // If auction ended, mark as sold
+          // If auction timer ended
           if (newRemainingTime <= 0 && !item.sold) {
-            item.sold = true;
             item.isActive = false;
-            await item.save();
-            // Broadcast item sold event
-            this.itemSoldBroadcast(item);
-          } else {
-            await item.save();
+
+            if (item.wininguser && item.wininguser !== '') {
+              // There were bids 
+              item.sold = true; 
+              await item.save();
+              this.itemSoldBroadcast(item);
+            } else {
+              // No bids, just expired
+              item.sold = false;
+              await item.save();
+              this.itemExpiredBroadcast(item);
+            }
           }
         }
 
         // Broadcast updated items list to all clients
-        const updatedItems = await Item.find({ isActive: true });
+        const updatedItems = await Item.find({isActive: true});
         this.itemsUpdateBroadcast(updatedItems);
       } catch (error) {
         console.error('Error in auction timer:', error);
@@ -182,6 +188,13 @@ class SocketService {
   public itemsUpdateBroadcast(items: any[]): void {
     if (this.io) {
       this.io.emit('update:items', items);
+    }
+  }
+
+  //Broadcast expired items to all clients
+  public itemExpiredBroadcast(item: any): void {
+    if (this.io) {
+      this.io.emit('item:expired', item);
     }
   }
 

@@ -29,8 +29,8 @@ export const createItem = async (req: Request, res: Response) => {
       description: description || '',
       currentbid: reservePrice,
       reservePrice: reservePrice,
-      initialTime: initialTime,
-      remainingtime: initialTime,
+      initialTime: initialTime * 1000, //ms
+      remainingtime: initialTime * 1000, //ms
       buynow: buynow,
       wininguser: '',
       sold: false,
