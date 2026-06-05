@@ -5,6 +5,10 @@
   <span class="toolbar-title">Auction System</span>
   <div class="toolbar-spacer"></div>
   <div class="toolbar-container">
+    <button mat-button routerLink="/admin" *ngIf="isAdmin">
+      <mat-icon>fingerprint</mat-icon>
+      Admin
+    </button>
     <button mat-button routerLink="/insertitem">
       <mat-icon>add_shopping_cart</mat-icon>
       Insert Item

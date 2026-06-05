@@ -6,6 +6,7 @@ import { SigninComponent } from './features/auth/components/signin/signin.compon
 import { RegisterComponent } from './features/auth/components/register/register.component';
 import { AuctionComponent } from './features/auction/components/auction/auction.component';
 import { InsertitemComponent } from './features/items/components/insertitem/insertitem.component';
+import { AdminComponent } from './features/admin/components/admin/admin.component';
 
 // Import the auth guard from the barrel file
 import { AuthGuard } from './core/guards';
@@ -34,6 +35,10 @@ const routes: Routes = [
     path: 'auction',
     component: AuctionComponent,
     canActivate: [AuthGuard]        // can only route here after successful login
+  },
+  { path: 'admin', 
+    component: AdminComponent, 
+    canActivate: [AuthGuard]        // can only route here after successful login AND privilege 
   }
 ];
 

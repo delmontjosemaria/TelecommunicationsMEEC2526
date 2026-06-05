@@ -28,5 +28,4 @@ router.use('/admin', adminRoutes);
 router.use(handleJwtError);
 
 
-
 export default router;

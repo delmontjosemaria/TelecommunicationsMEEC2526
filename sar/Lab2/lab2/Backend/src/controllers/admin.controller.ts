@@ -85,7 +85,7 @@ export const removeItem = async (req: Request, res: Response) => {
 // GET /api/admin/audit-logs
 export const getAuditLogs = async (req: Request, res: Response) => {
   try {
-    const logs = await AuditLog.find().sort({ createdAt: -1 }).limit(200);
+    const logs = await AuditLog.find().sort({createdAt: -1}).limit(200);
     res.json(logs);
   } catch {
     res.status(500).json({ error: 'Failed to fetch audit logs' });

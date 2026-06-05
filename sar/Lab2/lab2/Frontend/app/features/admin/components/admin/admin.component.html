@@ -1,0 +1,173 @@
+<div class="admin-shell">
+
+  <!-- Header -->
+  <div class="admin-header">
+    <div class="admin-header-left">
+      <div class="admin-badge">ADMIN</div>
+      <h1 class="admin-title">Control Panel</h1>
+    </div>
+    <button class="back-btn" routerLink="/auction">
+      <span class="back-icon">←</span> Back to Auction
+    </button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-bar">
+    <button class="tab-btn" [class.active]="activeTab === 'users'" (click)="activeTab = 'users'">
+      Users
+      <span class="tab-count">{{users.length}}</span>
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'items'" (click)="activeTab = 'items'">
+      Items
+      <span class="tab-count">{{items.length}}</span>
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'logs'" (click)="activeTab = 'logs'; loadLogs()">
+      Audit Log
+    </button>
+  </div>
+
+  <!-- Feedback bar -->
+  <div class="feedback-bar error" *ngIf="errorMessage">
+    <span>{{errorMessage}}</span>
+    <button (click)="errorMessage = ''">✕</button>
+  </div>
+  <div class="feedback-bar success" *ngIf="successMessage">
+    <span>{{successMessage}}</span>
+    <button (click)="successMessage = ''">✕</button>
+  </div>
+
+  <!-- ── USERS TAB ── -->
+  <div class="tab-content" *ngIf="activeTab === 'users'">
+    <div class="empty-state" *ngIf="users.length === 0">
+      <span class="empty-icon">👥</span>
+      <p>No users found.</p>  
+    </div>
+    <div class="data-table" *ngIf="users.length > 0">
+      <div class="table-header">
+        <span>Username</span>
+        <span>Email</span>
+        <span>Role</span>
+        <span>Status</span>
+        <span>Actions</span>
+      </div>
+      <div class="table-row" *ngFor="let user of users">
+        <span class="cell-username">{{user.username}}</span>
+        <span class="cell-email">{{user.email}}</span>
+
+        <!-- Role selector -->
+        <span class="cell-role">
+          <select class="role-select" [value]="user.role || 'user'"
+                  (change)="onRoleChange(user, $event)">
+            <option value="user">user</option>
+            <option value="moderator">moderator</option>
+            <option value="admin">admin</option>
+          </select>
+        </span>
+
+        <!-- Status badge -->
+        <span class="cell-status">
+          <span class="status-badge" [class.active]="user.isActive" [class.blocked]="!user.isActive">
+            {{user.isActive ? 'Active' : 'Blocked'}}
+          </span>
+        </span>
+
+        <!-- Actions -->
+        <span class="cell-actions">
+          <button class="action-btn unblock" *ngIf="!user.isActive" (click)="unblockUser(user)">
+            Unblock
+          </button>
+          <button class="action-btn block" *ngIf="user.isActive" (click)="openBlockModal(user)">
+            Block
+          </button>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ITEMS TAB ── -->
+  <div class="tab-content" *ngIf="activeTab === 'items'">
+    <div class="empty-state" *ngIf="items.length === 0">
+      <span class="empty-icon">📦</span>
+      <p>No active items found.</p>
+    </div>
+    <div class="data-table" *ngIf="items.length > 0">
+      <div class="table-header">
+        <span>Title</span>
+        <span>Owner</span>
+        <span>Current Bid</span>
+        <span>Status</span>
+        <span>Actions</span>
+      </div>
+      <div class="table-row" *ngFor="let item of items">
+        <span class="cell-title">{{item.title}}</span>
+        <span class="cell-owner">{{item.owner}}</span>
+        <span class="cell-bid">{{item.currentbid | currency}}</span>
+        <span class="cell-status">
+          <span class="status-badge" [class.active]="item.isActive" [class.blocked]="!item.isActive">
+            {{item.isActive ? 'Active' : 'Removed'}}
+          </span>
+        </span>
+        <span class="cell-actions">
+          <button class="action-btn block" *ngIf="item.isActive" (click)="openRemoveItemModal(item)">
+            Remove
+          </button>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── AUDIT LOG TAB ── -->
+  <div class="tab-content" *ngIf="activeTab === 'logs'">
+    <div class="empty-state" *ngIf="auditLogs.length === 0">
+      <span class="empty-icon">📋</span>
+      <p>No audit logs yet.</p>
+    </div>
+    <div class="data-table" *ngIf="auditLogs.length > 0">
+      <div class="table-header">
+        <span>Action</span>
+        <span>Performed By</span>
+        <span>Target</span>
+        <span>Reason</span>
+        <span>Date</span>
+      </div>
+      <div class="table-row" *ngFor="let log of auditLogs">
+        <span class="cell-action">
+          <span class="action-tag" [class]="'action-' + log.action">{{log.action}}</span>
+        </span>
+        <span>{{log.performedBy}}</span>
+        <span class="cell-mono">{{log.targetType}}: {{log.targetId}}</span>
+        <span class="cell-reason">{{log.reason || '—'}}</span>
+        <span class="cell-date">{{log.createdAt | date:'dd/MM/yy HH:mm'}}</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── BLOCK USER MODAL ── -->
+<div class="modal-overlay" *ngIf="showBlockModal" (click)="closeModals()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <h2 class="modal-title">Block user <span class="modal-subject">{{selectedUser?.username}}</span></h2>
+    <p class="modal-desc">This user will be immediately blocked from bidding and creating items.</p>
+    <label class="modal-label">Reason (optional)</label>
+    <textarea class="modal-textarea" [(ngModel)]="blockReason" placeholder="e.g. Suspicious bidding activity"></textarea>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" (click)="closeModals()">Cancel</button>
+      <button class="modal-btn confirm" (click)="blockUser()">Confirm Block</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── REMOVE ITEM MODAL ── -->
+<div class="modal-overlay" *ngIf="showRemoveItemModal" (click)="closeModals()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <h2 class="modal-title">Remove item <span class="modal-subject">{{selectedItem?.title}}</span></h2>
+    <p class="modal-desc">This item will be deactivated and removed from the auction listing.</p>
+    <label class="modal-label">Reason (optional)</label>
+    <textarea class="modal-textarea" [(ngModel)]="removeReason" placeholder="e.g. Prohibited item"></textarea>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" (click)="closeModals()">Cancel</button>
+      <button class="modal-btn confirm" (click)="removeItem()">Confirm Remove</button>
+    </div>
+  </div>
+</div>

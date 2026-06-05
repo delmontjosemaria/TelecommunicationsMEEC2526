@@ -23,8 +23,8 @@ export class SigninService {
     this.signinUrl = '/api/authenticate'; //URL to API authenticate service
     this.latitude = 0;
     this.longitude = 0;
-    var currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-      if (currentUser) this.token = currentUser;
+    var currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+    this.token = currentUser ?? {username: '', token: ''};
 }
  // Submit User name and Password obtain token object from server that has the username and the jwt token
 
@@ -41,9 +41,8 @@ export class SigninService {
 
 // store token object in the service for other services to use when authentication is needed.
   setToken (token: Token): void {
-    this.token.username = token.username;
-    this.token.token = token.token;
-    localStorage.setItem('currentUser', JSON.stringify({username: token.username, token:token.token}));
+    this.token = {username: token.username, token: token.token};
+    localStorage.setItem('currentUser', JSON.stringify(this.token));
 
   }
 

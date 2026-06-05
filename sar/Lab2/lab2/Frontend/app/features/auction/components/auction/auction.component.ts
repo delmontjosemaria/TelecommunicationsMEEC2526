@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormGroup, FormBuilder, Validators } from '@angular/forms';
 import {Subscription} from 'rxjs';
+import { jwtDecode } from "/workspaces/lab2/node_modules/jwt-decode/build/esm/index";
+import type { JwtPayload } from '../../../../core/models/jwt.model';
 
 // Import services from the barrel file
 import { AuctionService, SocketService, SigninService, NotificationService } from '../../../../core/services';
@@ -39,6 +41,7 @@ export class AuctionComponent implements OnInit {
 
   private subscriptions: Subscription[];
   private timerInterval: any;
+  isAdmin: boolean = false;   
 
   constructor( private formBuilder: FormBuilder, private router: Router, private socketservice: SocketService, private auctionservice: AuctionService,
    private signinservice: SigninService, private notificationService: NotificationService) {
@@ -68,6 +71,10 @@ export class AuctionComponent implements OnInit {
 
 ngOnInit(): void {
   	 this.message= "Hello " + this.userName + "! Welcome to the SAR auction site.";
+
+     //signature already valid because he signed in
+     const decoded = jwtDecode<JwtPayload>(this.signinservice.token.token);
+     this.isAdmin = decoded.role === 'admin';
 
   	 //create bid form
   	 this.bidForm = this.formBuilder.group({
@@ -413,16 +420,18 @@ ngOnInit(): void {
       return 'warn'; // Red
   }
 
+  /*
   getTimeTextColor(item: Item): string {
-  if (!item || !item.remainingtime || !item.initialTime) return '#E24B4A'; // vermelho
+    if (!item || !item.remainingtime || !item.initialTime) return '#E24B4A'; // vermelho
+    
+    const percentage = item.remainingtime / item.initialTime;
+
+    if (percentage > 0.5) return '#378ADD'; // azul — mais de 50%
+    if (percentage > 0.25) return '#EF9F27'; // amber — 25-50%
+    return '#E24B4A';                        // vermelho — menos de 25%
+  }
+  */
   
-  const percentage = item.remainingtime / item.initialTime;
-
-  if (percentage > 0.5) return '#378ADD'; // azul — mais de 50%
-  if (percentage > 0.25) return '#EF9F27'; // amber — 25-50%
-  return '#E24B4A';                        // vermelho — menos de 25%
-}
-
   ngOnDestroy(){
     this.subscriptions.forEach(s=>s.unsubscribe());
     clearInterval(this.timerInterval);
