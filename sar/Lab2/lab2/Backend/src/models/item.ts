@@ -6,7 +6,7 @@ export interface IItem extends Document {
   description: string;
   currentbid: number;
   reservePrice: number;
-  initialNumber: number;
+  initialTime: number;
   remainingtime: number;
   buynow: number;
   wininguser: string;
@@ -16,6 +16,7 @@ export interface IItem extends Document {
   lastBidDate: Date;
   flaggedAt?: Date;
   flaggedReason?: string;
+  endsAt: Date;
 }
 
 // Item schema definition
@@ -33,7 +34,8 @@ const ItemSchema = new Schema({
   isActive: {type: Boolean, default: true},
   lastBidDate: Date,
   flaggedAt: Date,
-  flaggedReason: String
+  flaggedReason: String,
+  endsAt: Date
 },{timestamps:true,
     toJSON: {
       virtuals: true,      

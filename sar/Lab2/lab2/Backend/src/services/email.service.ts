@@ -1,6 +1,5 @@
 import nodemailer from 'nodemailer';
 
-// Configure via env vars: EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS, EMAIL_FROM
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || 'smtp.ethereal.email',
   port: Number(process.env.EMAIL_PORT) || 587,

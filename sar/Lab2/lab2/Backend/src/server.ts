@@ -2,6 +2,9 @@
  * Express app to serve Angular single page auction site
  * Modernized with TypeScript and best practices
  */
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import fs from 'fs';
 import path from 'path';

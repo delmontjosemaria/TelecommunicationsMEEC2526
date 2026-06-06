@@ -38,7 +38,8 @@ export const createItem = async (req: Request, res: Response) => {
       isActive: true,
       lastBidDate: new Date(),
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
+      endsAt: new Date(Date.now() + initialTime*1000)
     });
 
     console.log(newItem);
@@ -132,7 +133,12 @@ export const getItems = async (req: Request, res: Response) => {
     }
 
     const items = await Item.find(filter).sort({createdAt: -1});
-    res.json(items);
+    const itemsWithTime = items.map(item => ({
+      ...item.toObject(),
+      remainingtime: Math.max(0, item.endsAt.getTime() - Date.now())
+    }));
+
+    res.json(itemsWithTime);
     console.log(`responded with ${items.length} items`);
   }
   catch(error){
