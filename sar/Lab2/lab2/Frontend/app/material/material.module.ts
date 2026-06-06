@@ -9,6 +9,10 @@ import {MatInputModule} from '@angular/material/input';
 import {MatCardModule} from '@angular/material/card';
 import {MatPaginatorModule} from '@angular/material/paginator';
 import {MatTableModule} from "@angular/material/table";	
+import { MatSelectModule } from '@angular/material/select';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatDividerModule } from '@angular/material/divider';
 
 @NgModule({
   imports: [
@@ -22,6 +26,10 @@ import {MatTableModule} from "@angular/material/table";
     MatCardModule,
     MatPaginatorModule,
     MatTableModule,
+    MatSelectModule,
+    MatChipsModule,
+    MatProgressBarModule,
+    MatDividerModule,
   ],
 
   exports: [
@@ -35,6 +43,10 @@ import {MatTableModule} from "@angular/material/table";
     MatCardModule,
     MatPaginatorModule,
     MatTableModule,
+    MatSelectModule,
+    MatChipsModule,
+    MatProgressBarModule,
+    MatDividerModule,
   ]
 })
 export class MaterialModule { }

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { throwError, Observable } from 'rxjs';
-import { HttpClient, HttpHeaders, HttpResponse, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpResponse, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { catchError, map, tap } from 'rxjs/operators';
 import { SigninService } from './signin.service';
 // Add any models that might be needed
@@ -18,17 +18,22 @@ export class AuctionService {
     this.removeItemUrl = "/api/removeitem";
   }
 
-  getItems() {
-        // add authorization header with jwt token
-        let headers = new HttpHeaders({ 'Authorization': 'Bearer ' + this.signinService.token.token }); // insert tokern in the requests
-        let options = { headers: headers };
-
-        // get users from api
-        return this.http.get<any[]>('/api/items', options)
-              .pipe(
-                catchError(this.handleError) // handle error function will return an empty Item[] anf log the error
-              );
-    }
+  getItems(filters?: {
+    search?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    owner?: string;
+    status?: string;
+  }): Observable<Item[]> {
+    let headers = new HttpHeaders({ 'Authorization': 'Bearer ' + this.signinService.token.token });
+    let params = new HttpParams();
+    if (filters?.search)   params = params.set('search',   filters.search);
+    if (filters?.minPrice) params = params.set('minPrice', filters.minPrice);
+    if (filters?.maxPrice) params = params.set('maxPrice', filters.maxPrice);
+    if (filters?.owner)    params = params.set('owner',    filters.owner);
+    if (filters?.status)   params = params.set('status',   filters.status);
+    return this.http.get<Item[]>('/api/items', { headers, params }).pipe(catchError(this.handleError));
+  }
 
    getUsers() {
         // add authorization header with jwt token

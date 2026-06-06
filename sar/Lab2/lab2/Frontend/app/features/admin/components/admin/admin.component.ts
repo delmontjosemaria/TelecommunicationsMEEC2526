@@ -49,13 +49,19 @@ export class AdminComponent implements OnInit {
   constructor(
     private http: HttpClient,
     private signinService: SigninService,
-    private router: Router
+    public router: Router
   ) {}
 
   ngOnInit(): void {
 
+      const tokenStr = this.signinService.token?.token;
+      if (!tokenStr) {
+        this.router.navigate(['/signin']);
+        return;
+      }
+
      //signature already valid because he signed in
-     const decoded = jwtDecode<JwtPayload>(this.signinService.token.token);
+     const decoded = jwtDecode<JwtPayload>(tokenStr);
      this.isAdmin = decoded.role === 'admin';
 
     // Redirect if not admin

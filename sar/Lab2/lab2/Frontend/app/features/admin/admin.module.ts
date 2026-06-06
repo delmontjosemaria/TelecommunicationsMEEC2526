@@ -1,7 +1,7 @@
 import { NgModule } from '@angular/core';
-import { RouterModule } from '@angular/router';
-import { CommonModule } from '@angular/common'; 
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import { SharedModule } from '../../shared/shared.module';
 
 // Import the components from their new locations
@@ -14,8 +14,8 @@ import { AdminComponent } from './components/admin/admin.component';
   imports: [
     CommonModule,
     FormsModule,
+    RouterModule,   
     SharedModule,
-    RouterModule,
   ],
   exports: [
     AdminComponent

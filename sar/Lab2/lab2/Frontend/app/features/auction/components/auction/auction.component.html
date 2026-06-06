@@ -48,6 +48,58 @@
   <mat-sidenav-content>
     <main class="main-content">
       <div class="main-container">
+            <!-- ── Filtros ── -->
+        <mat-card class="filter-panel mat-elevation-z2">
+          <mat-card-content>
+            <div class="filter-row">
+
+              <mat-form-field appearance="outline" class="filter-field">
+                <mat-label>Search</mat-label>
+                <input matInput [(ngModel)]="filters.search" placeholder="Title or description" (keyup.enter)="applyFilters()">
+                <mat-icon matPrefix>search</mat-icon>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="filter-field filter-field--sm">
+                <mat-label>Min Price</mat-label>
+                <input matInput type="number" [(ngModel)]="filters.minPrice" min="0">
+                <mat-icon matPrefix>paid</mat-icon>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="filter-field filter-field--sm">
+                <mat-label>Max Price</mat-label>
+                <input matInput type="number" [(ngModel)]="filters.maxPrice" min="0">
+                <mat-icon matPrefix>paid</mat-icon>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="filter-field filter-field--sm">
+                <mat-label>Owner</mat-label>
+                <input matInput [(ngModel)]="filters.owner" placeholder="Username">
+                <mat-icon matPrefix>person</mat-icon>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="filter-field filter-field--sm">
+                <mat-label>Status</mat-label>
+                <mat-select [(ngModel)]="filters.status">
+                  <mat-option value="">All</mat-option>
+                  <mat-option value="active">Active</mat-option>
+                  <mat-option value="sold">Sold</mat-option>
+                  <mat-option value="ended">Ended</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <div class="filter-actions">
+                <button mat-raised-button color="primary" (click)="applyFilters()">
+                  <mat-icon>filter_list</mat-icon> Apply
+                  <span *ngIf="activeFilterCount > 0" class="filter-badge">{{activeFilterCount}}</span>
+                </button>
+                <button mat-stroked-button (click)="clearFilters()">
+                  <mat-icon>clear</mat-icon> Clear
+                </button>
+              </div>
+
+            </div>
+          </mat-card-content>
+        </mat-card>
         <div class="top-container">
           <!-- Items Table Panel -->
           <mat-card class="table-panel mat-elevation-z3">
@@ -65,9 +117,9 @@
                   </td>
                 </tr>          
                 <!-- Description Column -->
-                <ng-container matColumnDef="description">
-                  <th mat-header-cell *matHeaderCellDef>Description</th>
-                  <td mat-cell *matCellDef="let item"> {{item.description}} </td>
+                <ng-container matColumnDef="title">
+                  <th mat-header-cell *matHeaderCellDef>Title</th>
+                  <td mat-cell *matCellDef="let item"> {{item.title}} </td>
                 </ng-container>
 
                 <!-- Current Bid Column -->

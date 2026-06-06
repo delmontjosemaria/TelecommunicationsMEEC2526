@@ -247,6 +247,42 @@
     height: 40px;
 }
 
+.filter-panel {
+  margin: 1rem 1rem 0.5rem 1rem;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.filter-field {
+  flex: 1 1 200px;
+}
+
+.filter-field--sm {
+  flex: 1 1 130px;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding-bottom: 4px;
+}
+
+.filter-badge {
+  background: white;
+  color: var(--primary);
+  border-radius: 99px;
+  font-size: 11px;
+  padding: 0 6px;
+  margin-left: 6px;
+  font-weight: 700;
+}
+
 @media (max-width: 1200px) {
     .top-container {
         grid-template-columns: 1fr;

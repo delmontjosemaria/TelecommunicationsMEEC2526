@@ -16,6 +16,7 @@ import { SharedModule } from './shared/shared.module';
 import { AuthModule } from './features/auth/auth.module';
 import { AuctionModule } from './features/auction/auction.module';
 import { ItemsModule } from './features/items/items.module';
+import { AdminModule } from './features/admin/admin.module';
 
 // The socket cannot start at bootstrap since the jwt token is still not available
 const config: SocketIoConfig = { url: window.location.origin, options: {autoConnect: false} };
@@ -39,6 +40,7 @@ const config: SocketIoConfig = { url: window.location.origin, options: {autoConn
     // Feature modules
     AuthModule,
     AuctionModule,
+    AdminModule,
     ItemsModule
   ],
   providers: [

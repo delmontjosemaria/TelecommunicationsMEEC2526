@@ -38,6 +38,17 @@ export class AuctionComponent implements OnInit {
   soldHistory: string[];
   chats: Chat[]; //array for storing chat messages
   counter: number;
+  filters = {
+  search: '',
+  owner: '',
+  status: '',
+  minPrice: null as number | null,
+  maxPrice: null as number | null
+};
+
+get activeFilterCount(): number {
+  return Object.values(this.filters).filter(v => v !== '' && v !== null).length;
+}
 
   private subscriptions: Subscription[];
   private timerInterval: any;
@@ -104,8 +115,6 @@ ngOnInit(): void {
           .map(u => ({ position: { lat: u.latitude!, lng: u.longitude! }, label: u.username }));
         },
         error: error => this.errorMessage = <any>error });
-
-  //subscribe to the incoming websocket events
 
   //example how to subscribe to the server side regularly (each second) items:update event
       const updateItemsSubscription = this.subscriptions.push(this.socketservice.getEvent("update:items")
@@ -250,6 +259,29 @@ ngOnInit(): void {
   }, 1000);
 
   }
+
+  applyFilters(): void {
+    const params: any = {};
+    if (this.filters.search)   params.search   = this.filters.search;
+    if (this.filters.owner)    params.owner    = this.filters.owner;
+    if (this.filters.status)   params.status   = this.filters.status;
+    if (this.filters.minPrice) params.minPrice = this.filters.minPrice;
+    if (this.filters.maxPrice) params.maxPrice = this.filters.maxPrice;
+
+    this.auctionservice.getItems(params).subscribe({
+      next: result => this.items = result as Item[],
+      error: err => this.errorMessage = err?.message || 'Failed to filter items'
+    });
+  }
+
+  clearFilters(): void {
+    this.filters = { search: '', owner: '', status: '', minPrice: null, maxPrice: null };
+    this.auctionservice.getItems().subscribe({
+      next: result => this.items = result as Item[],
+      error: err => this.errorMessage = err?.message || 'Failed to load items'
+    });
+  }
+
    logout(){
     //call the logout function in the signInService to clear the token in the browser
     this.signinservice.logout();  // Tem que estar em primeiro para ser apagado o token e nao permitir mais reconnects pelo socket

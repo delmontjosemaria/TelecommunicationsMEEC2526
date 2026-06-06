@@ -98,7 +98,7 @@ export const getUsers = async (req: Request, res: Response) => {
 
   try{
     const users = await User.find({}, 'name email username latitude longitude');
-    res.status(200).json({success: true, count: users.length, data: users});
+    res.status(200).json(users);
   }
   catch(error){
     console.error('Error fetching users:', error);
