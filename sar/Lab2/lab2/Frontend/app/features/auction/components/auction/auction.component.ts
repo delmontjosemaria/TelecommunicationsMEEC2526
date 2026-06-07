@@ -68,7 +68,7 @@ get activeFilterCount(): number {
     this.showMessage = false;
     this.userName = this.signinservice.token.username;
     this.errorMessage = "";
-    this.displayedColumns = ['description', 'currentbid', 'buynow', 'remainingtime', 'wininguser', 'owner'];
+    this.displayedColumns = ['title', 'currentbid', 'buynow', 'remainingtime', 'wininguser', 'owner'];
     this.centerLat = this.signinservice.latitude != null ? this.signinservice.latitude : 38.640026;
     this.centerLong = this.signinservice.longitude != null ? this.signinservice.longitude : -9.155379;
     this.markers = [];
@@ -117,15 +117,15 @@ ngOnInit(): void {
         error: error => this.errorMessage = <any>error });
 
   //example how to subscribe to the server side regularly (each second) items:update event
-      const updateItemsSubscription = this.subscriptions.push(this.socketservice.getEvent("update:items")
-                      .subscribe(
-                        data =>{
-                          let receiveddata = data as Item[];
-                            if (this.items){
-                              this.items = receiveddata;
-                            }
-                        }
-                      ));
+  this.subscriptions.push(this.socketservice.getEvent("update:items")
+    .subscribe(
+      data =>{
+        let receiveddata = data as Item[];
+          if (this.items){
+            this.items = receiveddata;
+          }
+      }
+    ));
 
   //subscribe to the new user logged in event that must be sent from the server when a client logs in 
 
@@ -181,7 +181,7 @@ ngOnInit(): void {
   //subscription to any other events must be performed here inside the ngOnInit function
 
     // Subscribe to bid updates
-  const bidSubscription = this.subscriptions.push(this.socketservice.getEvent("bid:updated")
+  this.subscriptions.push(this.socketservice.getEvent("bid:updated")
     .subscribe((data: any) => {
       let updatedItem = data as Item;
       // Update the item in the items array
@@ -196,7 +196,7 @@ ngOnInit(): void {
     }));
 
   // Subscribe to new items being created
-  const newItemSubscription = this.subscriptions.push(this.socketservice.getEvent("item:created")
+  this.subscriptions.push(this.socketservice.getEvent("item:created")
     .subscribe((data: any) => {
       let newItem = data as Item;
       this.items.push(newItem);
@@ -204,7 +204,7 @@ ngOnInit(): void {
     }));
 
   //subscribe to the item sold event sent by the server for each item that ends.
-  const itemSoldSubscription = this.subscriptions.push(this.socketservice.getEvent("item:sold")
+  this.subscriptions.push(this.socketservice.getEvent("item:sold")
     .subscribe((data: any) => {
       let soldItem = data as Item;
       this.items = this.items.filter(item => item.id !== soldItem.id);
@@ -220,7 +220,7 @@ ngOnInit(): void {
     }));
 
   // Subscribe to outbid notifications 
-  const outbidSubscription = this.subscriptions.push(this.socketservice.getEvent("user:outbid")
+  this.subscriptions.push(this.socketservice.getEvent("user:outbid")
     .subscribe((data: any) => {
       if (data.username === this.userName) {
         this.errorMessage = `You have been outbid on item ${data.itemTitle}! Current bid: ${data.currentBid}`;
@@ -228,7 +228,7 @@ ngOnInit(): void {
       }
     }));
 
-  const expiredSubscription = this.subscriptions.push(
+  this.subscriptions.push(
     this.socketservice.getEvent("item:expired").subscribe((data: any) => {
       const expiredItem = data as Item;
 
@@ -250,6 +250,20 @@ ngOnInit(): void {
       }
     })
   );
+
+  this.subscriptions.push(this.socketservice.getEvent('auction:extended')
+    .subscribe((data: any) => {
+      this.notificationService.showInfo(
+        `Auction for "${data.itemTitle}" extended by ${data.extensionMinutes} minutes!`
+      );
+     }));
+
+  this.subscriptions.push(this.socketservice.getEvent('auction:closing-soon')
+    .subscribe((data: any) => {
+      this.notificationService.showInfo(
+        `Auction for "${data.itemTitle}" ending soon!`
+      );
+    }));
 
   this.timerInterval = setInterval(() => {
     this.items = this.items.map(item => ({

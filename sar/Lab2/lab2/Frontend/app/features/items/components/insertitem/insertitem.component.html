@@ -94,6 +94,7 @@
                     <mat-error *ngIf="f['initialTime'].touched && f['initialTime'].invalid">
                       <span *ngIf="f['initialTime'].errors['required']">This field is mandatory.</span>
                       <span *ngIf="f['initialTime'].errors['pattern']">This must be a positive number.</span>
+                      <span *ngIf="f['initialTime'].errors['minValue']">Duration must be greater than 180 seconds (3 minutes).</span>
                     </mat-error>
                   </mat-form-field>
                   <mat-form-field class="form-field" appearance="outline">

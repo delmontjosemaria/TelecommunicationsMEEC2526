@@ -3,11 +3,11 @@
  * Modernized with TypeScript and best practices
  */
 import dotenv from 'dotenv';
+import path from 'path';
 dotenv.config();
 
 import express from 'express';
 import fs from 'fs';
-import path from 'path';
 import favicon from 'serve-favicon';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
@@ -18,6 +18,7 @@ import https from 'https';
 import { Server } from 'socket.io';
 import bodyParser from 'body-parser';
 import { Request, Response } from 'express';
+import { startExpiryTimer } from './services/timer.service';
 
 // Import custom modules
 import config from './config/config';
@@ -140,6 +141,9 @@ const startServer = async () => {
     process.exit(1);
   }
 };
+
+//start timer whenever the database is also configured
+startExpiryTimer(io);
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (err) => {

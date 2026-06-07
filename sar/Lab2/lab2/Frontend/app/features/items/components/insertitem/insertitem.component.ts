@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { FormGroup, FormControl, Validators } from '@angular/forms';
+import { FormGroup, FormControl, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 
 // Import services and models from barrel files
 import { InsertitemService, SigninService} from '../../../../core/services';
@@ -30,7 +30,7 @@ export class InsertitemComponent implements OnInit {
       description: new FormControl ('', [Validators.required]),
       reservePrice: new FormControl ('', [Validators.required, Validators.pattern("^[0-9]*$")]), 
       buynow: new FormControl ('', [Validators.required, Validators.pattern("^[0-9]*$")]), 
-      initialTime: new FormControl ('', [Validators.required, Validators.pattern("^[0-9]*$")]), 
+      initialTime: new FormControl ('', [Validators.required, Validators.pattern("^[0-9]*$"), this.minValueValidator(180)]), 
       owner: new FormControl ('', [Validators.required])
   	 });
      this.itemForm.patchValue({owner: this.userName});
@@ -40,6 +40,15 @@ export class InsertitemComponent implements OnInit {
 
   get f(){
     return this.itemForm.controls;
+  }
+
+  minValueValidator(min: number) {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value;
+      if (value === null || value === '') return null;
+      const numValue = Number(value);
+      return !isNaN(numValue) && numValue > min ? null : {minValue: {requiredMin: min, actual: numValue}};
+    };
   }
 
   submit(){

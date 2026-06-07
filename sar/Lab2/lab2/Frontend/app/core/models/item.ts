@@ -13,6 +13,7 @@ export class Item {
       public sold?: boolean,
       public isActive?: boolean,
       public createdAt?: Date,
-      public updatedAt?: Date
+      public updatedAt?: Date,
+      public endsAt?: Date
 	){}
 }

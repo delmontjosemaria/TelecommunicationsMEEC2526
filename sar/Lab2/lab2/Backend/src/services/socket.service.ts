@@ -8,6 +8,7 @@ class SocketService {
   private socketIDbyUsername: Map<string, string> = new Map();
   private usernamebySocketID: Map<string, string> = new Map();
   private intervalId: NodeJS.Timeout | null = null;
+  private closingSoonNotified: Set<String> = new Set();
 
   /**
    * Initialize Socket.IO server
@@ -102,39 +103,55 @@ class SocketService {
   private startAuctionTimer(): void {
     this.intervalId = setInterval(async () => {
       try {
-        // Get all active items
-        const items = await Item.find({isActive: true, sold: false});
+        const now = new Date();
 
-        for (const item of items) {
-          // Decrement remaining time by 1000ms (1 second)
-          const newRemainingTime = Math.max(0, item.remainingtime - 1000);
-          item.remainingtime = newRemainingTime;
+        //Find expired items
+        const expiredItems = await Item.find({isActive: true, sold: false, endsAt: {$lte: now}});
 
-          // If auction timer ended
-          if (newRemainingTime <= 0 && !item.sold) {
-            item.isActive = false;
+        for (const item of expiredItems){
+          item.isActive = false;
 
-            if (item.wininguser && item.wininguser !== '') {
-              // There were bids 
-              item.sold = true; 
-              await item.save();
-              this.itemSoldBroadcast(item);
-            } else {
-              // No bids, just expired
-              item.sold = false;
-              await item.save();
-              this.itemExpiredBroadcast(item);
-            }
+          if (item.wininguser && item.wininguser !== ''){
+            item.sold = true;
+            await item.save();
+            this.itemSoldBroadcast(item);
           }
+          else{
+            await item.save();
+            this.itemExpiredBroadcast(item);
+          }
+          this.closingSoonNotified.delete((item._id as any).toString());
         }
 
-        // Broadcast updated items list to all clients
-        const updatedItems = await Item.find({isActive: true});
-        this.itemsUpdateBroadcast(updatedItems);
+        const minTimeNotification = 120000; // 2 minutes
+        const ratioLimit = 0.10;
+        
+        const activeItems = await Item.find({isActive: true});
+        for (const item of activeItems){
+          const itemId = (item._id as any).toString();
+          const remainingTime = Math.max(0, item.endsAt.getTime() - Date.now());
+          //to avoid weird 'ending soon' notifications, either its 10 per cent of initialTime or the min time for a slow user to insert a bid  
+          const notificationThreshold = Math.max(item.initialTime * ratioLimit, minTimeNotification);
+          const shouldNotify = remainingTime <= notificationThreshold && remainingTime > 0;
+
+          if (shouldNotify && !this.closingSoonNotified.has(itemId)){
+            console.log('Delmont\'s the greatest goat ever, goated levels of goated, dead or alive? Answer: ', shouldNotify);
+            this.closingSoonNotified.add(itemId);
+            this.auctionClosingSoonBroadcast(item);
+          }  
+        }
+        //broadcast active items with remainingtime calculated through endsAt field
+        const itemsWithTime = activeItems.map(item => {
+          const obj = item.toObject();
+          return{...obj, 
+                 id: (obj._id as any).toString(), 
+                 remainingtime: Math.max(0, item.endsAt.getTime() - Date.now())};
+        });
+        this.io?.emit('update:items', itemsWithTime);
       } catch (error) {
         console.error('Error in auction timer:', error);
       }
-    }, 1000);
+    }, 5000);
   }
 
   // Broadcast new logged-in user to all clients
@@ -158,21 +175,27 @@ class SocketService {
   // Broadcast bid update to all clients
   public bidUpdateBroadcast(item: any): void {
     if (this.io) {
-      this.io.emit('bid:updated', item);
+      //so frontend can actually access id as a member of a typescript object
+      const data = item.toObject ? item.toObject() : item;
+      this.io.emit('bid:updated', {...data, id: data._id.toString()});
     }
   }
 
   // Broadcast new item creation to all clients
   public newItemBroadcast(item: any): void {
     if (this.io) {
-      this.io.emit('item:created', item);
+      const data = item.toObject ? item.toObject() : item;
+      this.io.emit('item:created', {...data, id: data._id.toString()});
     }
   }
 
   // Broadcast item sold event to all clients
   public itemSoldBroadcast(item: any): void {
     if (this.io) {
-      this.io.emit('item:sold', item);
+      const data = item.toObject ? item.toObject() : item;
+      const itemId = data._id.toString();
+      this.io.emit('item:sold', {...data, id: itemId});
+      this.closingSoonNotified.delete(itemId);
     }
   }
 
@@ -187,14 +210,44 @@ class SocketService {
   // Broadcast items update to all clients
   public itemsUpdateBroadcast(items: any[]): void {
     if (this.io) {
-      this.io.emit('update:items', items);
+      const data = items.map(item => {
+        const obj = item.toObject ? item.toObject() : item;
+        return {...obj, id: obj._id.toString()};
+      });
+      this.io.emit('update:items', data);
     }
   }
 
   //Broadcast expired items to all clients
   public itemExpiredBroadcast(item: any): void {
     if (this.io) {
-      this.io.emit('item:expired', item);
+      const data = item.toObject ? item.toObject() : item;
+      const itemId = data._id.toString();
+      this.io.emit('item:expired', {...data, id: itemId});
+      this.closingSoonNotified.delete(itemId);
+    }
+  }
+
+  //Broadcast auction time extension for given item to all clients
+  public auctionExtendedBroadcast(item: any, extensionMs: number): void{
+    if (this.io){
+      const data = item.toObject ? item.toObject() : item;
+      this.io.emit('auction:extended', {
+        itemId: data._id.toString(),
+      itemTitle: data.title,
+      newEndsAt: data.endsAt,
+      extensionMinutes: Math.round(extensionMs/60000)});
+    }
+  }
+
+  public auctionClosingSoonBroadcast(item: any): void{
+    if (this.io){
+      const data = item.toObject ? item.toObject() : item;
+      this.io.emit('auction:closing-soon', {
+        itemId: data._id.toString(),
+        itemTitle: data.title,
+        remainingtime: data.remainingtime
+      });
     }
   }
 

@@ -42,8 +42,6 @@ export const createItem = async (req: Request, res: Response) => {
       endsAt: new Date(Date.now() + initialTime*1000)
     });
 
-    console.log(newItem);
-
     const savedItem = await newItem.save();
 
     // Broadcast new item to all clients
@@ -95,47 +93,53 @@ export const getItems = async (req: Request, res: Response) => {
 
   try{
     // Build filter object from query params
-    const filter: any = { isActive: true };
+    const filter: any = {};
+
+    // Filter by status (active, sold, ended)
+    if (req.query.status) {
+      if (req.query.status === 'sold'){
+        filter.sold = true;
+        filter.isActive = false;
+      } 
+      else if (req.query.status === 'ended')
+        filter.remainingtime = { $lte: 0 };
+      else if (req.query.status === 'active') {
+        filter.sold = false;
+        filter.isActive = true;
+      }
+    }
+    else
+      filter.isActive = true;
 
     // Filter by price range
-    if (req.query.minPrice) {
-      filter.currentbid = { $gte: Number(req.query.minPrice) };
-    }
+    if (req.query.minPrice) 
+      filter.currentbid = {$gte: Number(req.query.minPrice)};
+    
     if (req.query.maxPrice) {
       filter.currentbid = filter.currentbid || {};
       filter.currentbid.$lte = Number(req.query.maxPrice);
     }
 
     // Filter by owner
-    if (req.query.owner) {
+    if (req.query.owner) 
       filter.owner = req.query.owner;
-    }
-
-    // Filter by status (active, sold, ended)
-    if (req.query.status) {
-      if (req.query.status === 'sold') {
-        filter.sold = true;
-      } else if (req.query.status === 'ended') {
-        filter.remainingtime = { $lte: 0 };
-      } else if (req.query.status === 'active') {
-        filter.sold = false;
-        filter.remainingtime = { $gt: 0 };
-      }
-    }
 
     // Text search on title/description
     if (req.query.search) {
       const searchTerm = req.query.search as string;
       filter.$or = [
-        { title: { $regex: searchTerm, $options: 'i' } },
-        { description: { $regex: searchTerm, $options: 'i' } }
+        {title: {$regex: searchTerm, $options: 'i'}},
+        {description: {$regex: searchTerm, $options: 'i' }}
       ];
     }
 
     const items = await Item.find(filter).sort({createdAt: -1});
     const itemsWithTime = items.map(item => ({
       ...item.toObject(),
-      remainingtime: Math.max(0, item.endsAt.getTime() - Date.now())
+      id: (item._id as any).toString(),  
+      remainingtime: item.endsAt
+        ? Math.max(0, item.endsAt.getTime() - Date.now())
+        : item.remainingtime ?? 0
     }));
 
     res.json(itemsWithTime);
@@ -182,6 +186,8 @@ export const updateItem = async (req: Request, res: Response): Promise<void> => 
  * Place a bid on an item
  */
 export const placeBid = async (req: Request, res: Response): Promise<void> => {
+
+  const softCloseExtension = 5*60*1000;
   try {
     const {id} = req.params;
     const {bidAmount, username} = req.body;
@@ -222,16 +228,17 @@ export const placeBid = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    if (bidAmount <= item.currentbid) {
-      res.status(400).json({error: `Bid must be higher than current bid of ${item.currentbid}`});
+    if (bidAmount < item.currentbid) {
+      res.status(400).json({error: `Bid value must at least beat the current bid standing as ${item.currentbid}`});
       return;
     }
 
     if (item.owner === username) {
-      res.status(403).json({ error: 'You cannot bid on your own item' });
+      res.status(403).json({ error: 'You cannot bid on your own item'});
       return;
     }
 
+    
     // Store previous bidder for outbid notification
     const previousBidder = item.wininguser;
 
@@ -255,7 +262,7 @@ export const placeBid = async (req: Request, res: Response): Promise<void> => {
       item.isActive = false;
       const soldItem = await item.save();
       socketService.itemSoldBroadcast(soldItem);
-      res.json({message: 'Item purchased via Buy Now!', item: soldItem});
+      res.json({message: 'Item purchased via beating Buy Now price!', item: soldItem});
       return;
     }
 
@@ -264,16 +271,24 @@ export const placeBid = async (req: Request, res: Response): Promise<void> => {
     item.wininguser = username;
     item.lastBidDate = new Date();
 
+    let wasExtended = false;
+
     // Soft-close extension: if bid in final 5 minutes, extend by 5 minutes
-    const fiveMinutesInMs = 300000;
-    if (item.remainingtime < fiveMinutesInMs) {
-      item.remainingtime = fiveMinutesInMs;
+    if (item.remainingtime < softCloseExtension) {
+      item.remainingtime = softCloseExtension;
+      item.endsAt = new Date(Date.now() + softCloseExtension);
+      wasExtended = true;
     }
 
     const updatedItem = await item.save();
 
     // Broadcast bid update to all clients
     socketService.bidUpdateBroadcast(updatedItem);
+    if (wasExtended){
+      socketService.auctionExtendedBroadcast(item, softCloseExtension);
+    }
+      
+
     res.json({message: 'Bid placed successfully', item: updatedItem});
 
     setImmediate(async () => {
@@ -282,7 +297,7 @@ export const placeBid = async (req: Request, res: Response): Promise<void> => {
         if (previousBidder && previousBidder !== username) {
           socketService.outbidNotification(previousBidder, {
             username: previousBidder,
-            itemId: item._id,
+            itemId: (item._id as any).toString(),
             itemTitle: item.title,
             currentBid: bidAmount,
             newBidder: username
